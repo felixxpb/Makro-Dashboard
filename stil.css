@@ -1,0 +1,510 @@
+/* ===========================================================================
+   Makro-Dashboard - Optik
+   Farbwerte und Markierungsregeln nach der Gestaltungsgrundlage:
+   duenne Markierungen, zurueckhaltendes Raster, Flaechen trennen durch Luft.
+   =========================================================================== */
+
+:root {
+  --flaeche:        #fcfcfb;
+  --ebene:          #f9f9f7;
+  --text-primaer:   #0b0b0b;
+  --text-sekundaer: #52514e;
+  --text-stumm:     #898781;
+  --raster:         #e1e0d9;
+  --achse:          #c3c2b7;
+  --rand:           rgba(11, 11, 11, 0.10);
+  --serie-1:        #2a78d6;
+  --serie-2:        #eb6834;
+  --gut:            #006300;
+  --schlecht:       #d03b3b;
+  --warnung:        #fab219;
+  --schatten:       0 1px 2px rgba(11,11,11,.04), 0 4px 16px rgba(11,11,11,.06);
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --flaeche:        #1a1a19;
+  --ebene:          #0d0d0d;
+  --text-primaer:   #ffffff;
+  --text-sekundaer: #c3c2b7;
+  --text-stumm:     #898781;
+  --raster:         #2c2c2a;
+  --achse:          #383835;
+  --rand:           rgba(255, 255, 255, 0.10);
+  --serie-1:        #3987e5;
+  --serie-2:        #d95926;
+  --gut:            #0ca30c;
+  --schlecht:       #d03b3b;
+  --warnung:        #fab219;
+  --schatten:       none;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 0 20px 48px;
+  background: var(--ebene);
+  color: var(--text-primaer);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* --- Kopf ---------------------------------------------------------------- */
+
+.kopf {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 28px 0 20px;
+}
+
+.kopf-zeile {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.kopf-pfad {
+  font-size: 12px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-stumm);
+  margin-bottom: 4px;
+}
+
+.kopf h1 {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+.kopf-frage {
+  margin: 12px 0 0;
+  color: var(--text-sekundaer);
+  max-width: 62ch;
+}
+
+.thema-schalter {
+  flex: none;
+  background: var(--flaeche);
+  color: var(--text-sekundaer);
+  border: 1px solid var(--rand);
+  border-radius: 8px;
+  padding: 7px 13px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.thema-schalter:hover { color: var(--text-primaer); }
+:root[data-theme="dark"] .thema-hell { display: none; }
+:root:not([data-theme="dark"]) .thema-dunkel { display: none; }
+
+/* --- Gruppen ------------------------------------------------------------- */
+
+main { max-width: 1180px; margin: 0 auto; }
+
+.gruppe { margin-top: 34px; }
+
+.gruppe h2 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--text-sekundaer);
+}
+
+.gruppe-hinweis {
+  margin: 5px 0 16px;
+  font-size: 13px;
+  color: var(--text-stumm);
+  max-width: 70ch;
+}
+
+/* --- Kachelraster -------------------------------------------------------- */
+
+.kachel-raster {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
+  gap: 14px;
+}
+
+.kachel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--flaeche);
+  border: 1px solid var(--rand);
+  border-radius: 12px;
+  padding: 15px 16px 13px;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  box-shadow: var(--schatten);
+  transition: border-color .12s ease, transform .12s ease;
+}
+
+.kachel:hover,
+.kachel:focus-visible {
+  border-color: var(--achse);
+  transform: translateY(-1px);
+  outline: none;
+}
+.kachel:focus-visible { box-shadow: 0 0 0 2px var(--serie-1); }
+
+.kachel-titel {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-sekundaer);
+  line-height: 1.35;
+}
+
+.kachel-wertzeile {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+/* Grosse Zahlen bewusst mit proportionalen Ziffern */
+.kachel-wert {
+  font-size: 27px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.kachel-einheit {
+  font-size: 13px;
+  color: var(--text-stumm);
+}
+
+.delta {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.delta-gut      { color: var(--gut); }
+.delta-schlecht { color: var(--schlecht); }
+.delta-neutral  { color: var(--text-sekundaer); }
+
+.kachel-fuss {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-stumm);
+}
+
+.kachel-funken { height: 34px; margin: -2px 0 -4px; }
+
+/* Ersatz fuer die Verlaufslinie, solange nur ein Wert vorliegt */
+.kachel-einstufung {
+  height: 34px;
+  margin: -2px 0 -4px;
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  color: var(--text-sekundaer);
+}
+.kachel-funken svg { display: block; width: 100%; height: 100%; overflow: visible; }
+
+.marke {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--rand);
+  color: var(--text-sekundaer);
+  white-space: nowrap;
+}
+.marke-warnung { color: var(--text-primaer); border-color: var(--warnung); }
+.marke-punkt {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--warnung); flex: none;
+}
+
+/* --- Fuss ---------------------------------------------------------------- */
+
+.fuss {
+  max-width: 1180px;
+  margin: 40px auto 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--raster);
+  font-size: 12px;
+  color: var(--text-stumm);
+}
+.fuss-trenner { margin: 0 8px; }
+
+/* --- Detailansicht ------------------------------------------------------- */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .45);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 28px 16px;
+  overflow-y: auto;
+  z-index: 50;
+}
+.overlay[hidden] { display: none; }
+
+.dialog {
+  width: min(880px, 100%);
+  background: var(--flaeche);
+  border: 1px solid var(--rand);
+  border-radius: 14px;
+  padding: 22px 24px 20px;
+  box-shadow: 0 12px 48px rgba(0,0,0,.28);
+}
+
+.dialog-kopf {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.dialog-kopf h2 {
+  margin: 0;
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.dialog-unter {
+  margin: 3px 0 0;
+  font-size: 13px;
+  color: var(--text-stumm);
+}
+
+.schliessen {
+  flex: none;
+  background: none;
+  border: none;
+  color: var(--text-stumm);
+  font-size: 26px;
+  line-height: 1;
+  padding: 0 4px;
+  cursor: pointer;
+}
+.schliessen:hover { color: var(--text-primaer); }
+
+.prueffrage {
+  margin: 16px 0 0;
+  padding: 11px 14px;
+  background: var(--ebene);
+  border-left: 2px solid var(--serie-1);
+  border-radius: 0 8px 8px 0;
+  font-size: 14px;
+  color: var(--text-sekundaer);
+}
+
+.kennwerte {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.kennwerte[hidden],
+.steuerzeile[hidden] { display: none; }
+
+/* Detailansicht ohne Verlauf: ein Wert, gross dargestellt */
+.einzelwert { padding: 22px 0 8px; }
+.einzelwert-zeile {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.einzelwert-zahl {
+  font-size: 44px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+.einzelwert-einheit { font-size: 15px; color: var(--text-stumm); }
+.einzelwert-monat {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--text-stumm);
+}
+.einzelwert-stufe {
+  margin-top: 14px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-primaer);
+}
+.einzelwert-stufe + .einzelwert-stufe { margin-top: 6px; }
+.einzelwert-hinweis { margin: 18px 0 0; font-size: 12px; color: var(--text-stumm); }
+
+.kennwert {
+  border: 1px solid var(--rand);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.kennwert-titel {
+  font-size: 11px;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--text-stumm);
+}
+.kennwert-wert {
+  margin-top: 3px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* Steuerzeile: eine Reihe ueber dem Graph */
+.steuerzeile {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 22px;
+}
+
+.zeitraum { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.zeitraum button {
+  background: none;
+  border: 1px solid var(--rand);
+  border-radius: 7px;
+  padding: 5px 11px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text-sekundaer);
+  cursor: pointer;
+}
+.zeitraum button:hover { color: var(--text-primaer); }
+.zeitraum button[aria-pressed="true"] {
+  color: var(--text-primaer);
+  border-color: var(--achse);
+  font-weight: 600;
+}
+
+.ansicht-schalter {
+  background: none;
+  border: 1px solid var(--rand);
+  border-radius: 7px;
+  padding: 5px 11px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text-sekundaer);
+  cursor: pointer;
+}
+.ansicht-schalter:hover { color: var(--text-primaer); }
+
+.graph-rahmen { margin: 14px 0 0; }
+
+.graph-behaelter {
+  position: relative;
+  width: 100%;
+}
+.graph-behaelter svg { display: block; width: 100%; height: auto; }
+
+.legende {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--text-sekundaer);
+}
+.legende-eintrag { display: inline-flex; align-items: center; gap: 6px; }
+.legende-strich { width: 14px; height: 2px; border-radius: 1px; flex: none; }
+
+/* Tooltip */
+.tooltip {
+  position: absolute;
+  pointer-events: none;
+  background: var(--flaeche);
+  border: 1px solid var(--achse);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(0,0,0,.18);
+  z-index: 3;
+}
+.tooltip-datum {
+  color: var(--text-stumm);
+  margin-bottom: 4px;
+}
+.tooltip-zeile {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.tooltip-wert {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primaer);
+}
+.tooltip-name { color: var(--text-sekundaer); }
+
+/* Tabellenansicht */
+.tabelle-behaelter {
+  margin-top: 14px;
+  max-height: 340px;
+  overflow-y: auto;
+  border: 1px solid var(--rand);
+  border-radius: 10px;
+}
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead th {
+  position: sticky;
+  top: 0;
+  background: var(--flaeche);
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-sekundaer);
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--raster);
+}
+tbody td {
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--raster);
+  font-variant-numeric: tabular-nums;
+}
+tbody tr:last-child td { border-bottom: none; }
+td.zahl { text-align: right; }
+
+.dialog-fuss {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--raster);
+  font-size: 12px;
+  color: var(--text-stumm);
+}
+.dialog-fuss a { color: var(--text-sekundaer); }
+.hinweis { max-width: 46ch; }
+
+/* --- Handy --------------------------------------------------------------- */
+
+@media (max-width: 620px) {
+  body { padding: 0 14px 36px; }
+  .kopf h1 { font-size: 25px; }
+  .kachel-raster { grid-template-columns: repeat(auto-fill, minmax(158px, 1fr)); gap: 11px; }
+  .kachel-wert { font-size: 23px; }
+  .dialog { padding: 18px 16px 16px; border-radius: 12px; }
+  .overlay { padding: 12px 8px; }
+}
