@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Makro-Dashboard · Arbeitsmarkt</title>
+<title>Makro-Dashboard</title>
 <link rel="stylesheet" href="stil.css">
 </head>
 <body>
@@ -12,81 +12,78 @@
   <div class="kopf-zeile">
     <div>
       <div class="kopf-pfad">Makro-Dashboard</div>
-      <h1>Arbeitsmarkt</h1>
+      <h1>Übersicht</h1>
     </div>
     <button id="themaSchalter" class="thema-schalter" type="button" aria-label="Hell- oder Dunkelmodus umschalten">
       <span class="thema-hell">Hell</span><span class="thema-dunkel">Dunkel</span>
     </button>
   </div>
-  <p class="kopf-frage">Zeigt der Arbeitsmarkt Anzeichen von Stress, und wer hat die Macht &ndash; Arbeitnehmer oder Arbeitgeber?</p>
+  <p class="kopf-frage">Der komplette Makro-Analyseprozess an einem Ort. Auf einen Bereich klicken für Kacheln, Graphen und Detailansichten.</p>
 </header>
 
-<main>
+<main class="start-raster">
 
-  <section class="gruppe" aria-labelledby="g-harte">
-    <h2 id="g-harte">Harte Daten</h2>
-    <p class="gruppe-hinweis">Tatsächlich gemessene Zahlen, keine Umfragen.</p>
-    <div class="kachel-raster" id="raster-harte"></div>
-  </section>
+  <a class="bereich-kachel" href="arbeitsmarkt.html">
+    <div class="bereich-kachel-titel">Arbeitsmarkt</div>
+    <p class="bereich-kachel-text">Initial Claims, JOLTS, ISM Employment, Challenger, U-Rate, Nonfarm Payrolls</p>
+    <span class="bereich-kachel-status status-fertig">11 Kennzahlen</span>
+  </a>
 
-  <section class="gruppe" aria-labelledby="g-jolts">
-    <h2 id="g-jolts">JOLTS &ndash; Angebot und Nachfrage</h2>
-    <p class="gruppe-hinweis">Großer Abstand zwischen offenen Stellen und Neueinstellungen gilt laut Trading Plan als Warnsignal.</p>
-    <div class="kachel-raster" id="raster-jolts"></div>
-  </section>
+  <a class="bereich-kachel" href="inflation.html">
+    <div class="bereich-kachel-titel">Inflation</div>
+    <p class="bereich-kachel-text">CPI, PPI, ISM Prices, Global Supply Chain Pressure Index, TIPS-Breakeven, Michigan-Erwartung</p>
+    <span class="bereich-kachel-status status-fertig">13 Kennzahlen</span>
+  </a>
 
-  <section class="gruppe" aria-labelledby="g-weiche">
-    <h2 id="g-weiche">Weiche Daten und Vorlauf</h2>
-    <p class="gruppe-hinweis">Umfragen und Ankündigungen &ndash; sie laufen den harten Daten voraus.</p>
-    <div class="kachel-raster" id="raster-weiche"></div>
-  </section>
+  <div class="bereich-kachel bereich-kachel-offen" aria-disabled="true">
+    <div class="bereich-kachel-titel">Wachstum</div>
+    <p class="bereich-kachel-text">ISM New Orders, Backlog Index, Service PMI, GDPNow</p>
+    <span class="bereich-kachel-status status-offen">in Arbeit</span>
+  </div>
+
+  <div class="bereich-kachel bereich-kachel-offen" aria-disabled="true">
+    <div class="bereich-kachel-titel">Sentiment</div>
+    <p class="bereich-kachel-text">Positionierung und Marktstimmung</p>
+    <span class="bereich-kachel-status status-offen">in Arbeit</span>
+  </div>
+
+  <div class="bereich-kachel bereich-kachel-offen" aria-disabled="true">
+    <div class="bereich-kachel-titel">Plumbing</div>
+    <p class="bereich-kachel-text">SOFR, REPO, RRP, VIX, FED Stress Index</p>
+    <span class="bereich-kachel-status status-offen">in Arbeit</span>
+  </div>
+
+  <div class="bereich-kachel bereich-kachel-offen" aria-disabled="true">
+    <div class="bereich-kachel-titel">Zinsen</div>
+    <p class="bereich-kachel-text">FED-Pricing, Zinserwartungen, Bonds</p>
+    <span class="bereich-kachel-status status-offen">in Arbeit</span>
+  </div>
+
+  <div class="bereich-kachel bereich-kachel-offen" aria-disabled="true">
+    <div class="bereich-kachel-titel">Regime</div>
+    <p class="bereich-kachel-text">Konjunkturzyklus und Marktregime</p>
+    <span class="bereich-kachel-status status-offen">in Arbeit</span>
+  </div>
 
 </main>
 
 <footer class="fuss">
-  <span id="fussStand"></span>
-  <span class="fuss-trenner">·</span>
-  <span>Quellen: FRED (St. Louis Fed), TradingEconomics, Challenger Gray &amp; Christmas</span>
+  <span>Makro-Dashboard · Teil des FIST-Analyseprozesses</span>
 </footer>
 
-<!-- Detailansicht -->
-<div class="overlay" id="overlay" hidden>
-  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="detailTitel">
-
-    <div class="dialog-kopf">
-      <div>
-        <h2 id="detailTitel"></h2>
-        <p class="dialog-unter" id="detailUnter"></p>
-      </div>
-      <button class="schliessen" id="schliessen" type="button" aria-label="Schließen">&times;</button>
-    </div>
-
-    <p class="prueffrage" id="detailFrage"></p>
-
-    <div class="kennwerte" id="detailKennwerte"></div>
-
-    <div class="steuerzeile" id="steuerzeile">
-      <div class="zeitraum" id="zeitraum" role="group" aria-label="Zeitraum"></div>
-      <button class="ansicht-schalter" id="ansichtSchalter" type="button">Tabelle anzeigen</button>
-    </div>
-
-    <figure class="graph-rahmen">
-      <div class="graph-behaelter" id="graphBehaelter"></div>
-      <figcaption id="graphLegende" class="legende"></figcaption>
-    </figure>
-
-    <div class="tabelle-behaelter" id="tabelleBehaelter" hidden></div>
-
-    <div class="dialog-fuss">
-      <div id="detailQuelle"></div>
-      <div id="detailHinweis" class="hinweis"></div>
-    </div>
-
-  </div>
-</div>
-
-<script src="daten/arbeitsmarkt.js"></script>
-<script src="daten/webquellen.js"></script>
-<script src="dashboard.js"></script>
+<script>
+(function () {
+  "use strict";
+  var schalter = document.getElementById("themaSchalter");
+  var gespeichert = null;
+  try { gespeichert = localStorage.getItem("dashboard-thema"); } catch (e) { }
+  if (gespeichert) { document.documentElement.setAttribute("data-theme", gespeichert); }
+  schalter.addEventListener("click", function () {
+    var neu = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", neu);
+    try { localStorage.setItem("dashboard-thema", neu); } catch (e) { }
+  });
+})();
+</script>
 </body>
 </html>
