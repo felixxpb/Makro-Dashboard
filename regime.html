@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="de" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Makro-Dashboard · Regime</title>
+<link rel="stylesheet" href="stil.css">
+</head>
+<body>
+
+<header class="kopf">
+  <div class="kopf-zeile">
+    <div>
+      <a class="kopf-zurueck" href="index.html">← Übersicht</a>
+      <div class="kopf-pfad">Makro-Dashboard</div>
+      <h1>Regime</h1>
+    </div>
+    <button id="themaSchalter" class="thema-schalter" type="button" aria-label="Hell- oder Dunkelmodus umschalten">
+      <span class="thema-hell">Hell</span><span class="thema-dunkel">Dunkel</span>
+    </button>
+  </div>
+  <p class="kopf-frage">In welchem Zinskurven- und Marktregime befinden wir uns, und welche Assets performen erfahrungsgemäß in diesem Umfeld?</p>
+</header>
+
+<main id="kachelbereiche"></main>
+
+<footer class="fuss">
+  <span id="fussStand"></span>
+  <span class="fuss-trenner">·</span>
+  <span>Quellen: FRED (St. Louis Fed), Yahoo Finance</span>
+</footer>
+
+<!-- Detailansicht -->
+<div class="overlay" id="overlay" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="detailTitel">
+
+    <div class="dialog-kopf">
+      <div>
+        <h2 id="detailTitel"></h2>
+        <p class="dialog-unter" id="detailUnter"></p>
+      </div>
+      <button class="schliessen" id="schliessen" type="button" aria-label="Schließen">&times;</button>
+    </div>
+
+    <p class="prueffrage" id="detailFrage"></p>
+
+    <div class="kennwerte" id="detailKennwerte"></div>
+
+    <div class="steuerzeile" id="steuerzeile">
+      <div class="zeitraum" id="zeitraum" role="group" aria-label="Zeitraum"></div>
+      <button class="ansicht-schalter" id="ansichtSchalter" type="button">Tabelle anzeigen</button>
+    </div>
+
+    <figure class="graph-rahmen">
+      <div class="graph-behaelter" id="graphBehaelter"></div>
+      <figcaption id="graphLegende" class="legende"></figcaption>
+    </figure>
+
+    <div class="tabelle-behaelter" id="tabelleBehaelter" hidden></div>
+
+    <section class="aufschluesselung" id="aufschluesselung" hidden></section>
+
+    <div class="dialog-fuss">
+      <div id="detailQuelle"></div>
+      <div id="detailHinweis" class="hinweis"></div>
+    </div>
+
+  </div>
+</div>
+
+<script src="daten/regime.js"></script>
+<script src="bereiche/regime-kacheln.js"></script>
+<script src="motor.js"></script>
+<script>
+/* ===========================================================================
+   Regime-Klassifikation und historische Referenztabelle. Kein Teil des
+   generischen Kachel-Motors (motor.js), weil es keine Zeitreihen-Kacheln
+   sind, sondern eine Text-Einstufung (ZSK-Kurvenform, Makro-Regime,
+   DXY/ZB1-Quadrant) und eine statische Tabelle. Haengt sich nach den
+   generischen Kachel-Gruppen an #kachelbereiche an.
+   =========================================================================== */
+(function () {
+  "use strict";
+  var daten = window.REGIME_DATEN;
+  if (!daten || !daten.klassifikation) { return; }
+  var wurzel = document.getElementById("kachelbereiche");
+
+  function el(tag, klasse, text) {
+    var n = document.createElement(tag);
+    if (klasse) { n.className = klasse; }
+    if (text !== undefined && text !== null) { n.textContent = String(text); }
+    return n;
+  }
+
+  function datumText(iso) {
+    if (!iso) { return "–"; }
+    var t = iso.split("-");
+    return t[2] + "." + t[1] + "." + t[0];
+  }
+
+  /* --- Klassifikationskarten ---------------------------------------------- */
+  var abschnitt = el("section", "gruppe");
+  abschnitt.setAttribute("aria-labelledby", "g-klassifikation");
+  var h2 = el("h2", null, "Aktuelle Regime-Einstufung");
+  h2.id = "g-klassifikation";
+  abschnitt.appendChild(h2);
+  abschnitt.appendChild(el("p", "gruppe-hinweis", "Mechanisch aus den Zeitreihen oben berechnet, Fenster " + (daten.klassifikation.zsk.fenster || 20) + " Handelstage. Keine Handelsempfehlung, nur die Einstufung nach deiner eigenen Regime-Methodik."));
+
+  var karten = el("div", "kennwerte");
+  var eintraege = [
+    { titel: "ZSK-Kurvenform", k: daten.klassifikation.zsk,
+      erklaerung: "Aus der Änderung von 2Y-Rendite, 10Y-Rendite und 10Y-2Y-Spread über " + (daten.klassifikation.zsk.fenster || 20) + " Handelstage. Beide Renditen steigen = Bear, beide fallen = Bull, Spread steigt = Steepener, Spread fällt = Flattener, gegenläufige Renditen = Twist." },
+    { titel: "Makro-Regime", k: daten.klassifikation.makro,
+      erklaerung: "Abgeleitet aus der ZSK-Kurvenform: Goldilocks = Bull Steepener, Reflation = Bear Steepener, Inflation = Bear Flattener, Deflation = Bull Flattener. Bei Twist/Neutral kein eindeutiges Makro-Regime (Übergang)." },
+    { titel: "DXY/ZB1-Quadrant", k: daten.klassifikation.quadrant,
+      erklaerung: "Aus der Änderung von DXY und ZB1 (30Y-T-Bond-Future) über " + (daten.klassifikation.quadrant.fenster || 20) + " Handelstage, nach dem Trading-Plan-Abschnitt „ZB1! + Sentiment & Regime“." }
+  ];
+  eintraege.forEach(function (e) {
+    var karte = el("div", "regime-karte");
+    karte.appendChild(el("div", "regime-karte-titel", e.titel));
+    karte.appendChild(el("div", "regime-karte-wert", e.k.label));
+    karte.appendChild(el("div", "regime-karte-seit", "seit " + datumText(e.k.seitDatum) + " (" + e.k.handelstage + " Handelstage)"));
+    karte.appendChild(el("div", "regime-karte-text", e.erklaerung));
+    karten.appendChild(karte);
+  });
+  abschnitt.appendChild(karten);
+  wurzel.appendChild(abschnitt);
+
+  /* --- Historische Referenztabelle ----------------------------------------- */
+  if (daten.referenz && daten.referenz.zeilen && daten.referenz.zeilen.length) {
+    var refAbschnitt = el("section", "gruppe");
+    refAbschnitt.setAttribute("aria-labelledby", "g-referenz");
+    var h2b = el("h2", null, "Historische Performance je Regime");
+    h2b.id = "g-referenz";
+    refAbschnitt.appendChild(h2b);
+    refAbschnitt.appendChild(el("p", "referenz-hinweis", "Historische Performance je Regime aus dem Rohmaterial (Regime Theorie Zusammenfassung.docx). Statistische Rückschau, keine aktuelle Handelsempfehlung."));
+
+    var tabelleBox = el("div", "referenz-tabelle");
+    var tabelle = document.createElement("table");
+    var thead = document.createElement("thead");
+    var kopfZeile = document.createElement("tr");
+    ["Regime", "Asset", "Performance"].forEach(function (t) {
+      var th = document.createElement("th");
+      th.textContent = t;
+      kopfZeile.appendChild(th);
+    });
+    thead.appendChild(kopfZeile);
+    tabelle.appendChild(thead);
+
+    var tbody = document.createElement("tbody");
+    daten.referenz.zeilen.forEach(function (z) {
+      var tr = document.createElement("tr");
+      tr.appendChild(el("td", null, z.regime));
+      tr.appendChild(el("td", null, z.asset));
+      var tdZahl = el("td", "zahl", (z.performance > 0 ? "+" : "") + z.performance + " %");
+      tr.appendChild(tdZahl);
+      tbody.appendChild(tr);
+    });
+    tabelle.appendChild(tbody);
+    tabelleBox.appendChild(tabelle);
+    refAbschnitt.appendChild(tabelleBox);
+    wurzel.appendChild(refAbschnitt);
+  }
+})();
+</script>
+</body>
+</html>

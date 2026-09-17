@@ -646,6 +646,48 @@ td.zahl { text-align: right; }
   font-size: 12px;
   color: var(--text-stumm);
 }
+
+/* Regime-Klassifikationskarten (Bereich Regime, keine gewoehnlichen Kacheln) */
+.regime-karte {
+  border: 1px solid var(--rand);
+  border-radius: 10px;
+  padding: 14px 16px;
+  background: var(--flaeche);
+}
+.regime-karte-titel {
+  font-size: 11px;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--text-stumm);
+}
+.regime-karte-wert {
+  margin-top: 5px;
+  font-size: 20px;
+  font-weight: 600;
+}
+.regime-karte-seit {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-sekundaer);
+}
+.regime-karte-text {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-stumm);
+}
+
+/* Historische Referenztabelle (statisch, kein Live-Abruf) */
+.referenz-hinweis {
+  margin: 4px 0 14px;
+  font-size: 12px;
+  color: var(--text-stumm);
+  max-width: 70ch;
+}
+.referenz-tabelle {
+  border: 1px solid var(--rand);
+  border-radius: 10px;
+  overflow: hidden;
+}
 .dialog-fuss a { color: var(--text-sekundaer); }
 .hinweis { max-width: 46ch; }
 
