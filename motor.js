@@ -83,6 +83,7 @@
       case "punkte":
         return wert.toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
       case "dollar":
+      case "faktor":
         return wert.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       default:
         return String(wert);
@@ -93,7 +94,7 @@
   // damit ein Wert, der auf 0 rundet, als "±0,0" erscheint statt "−0,0".
   function nachkommastellen(format) {
     if (format === "tausend" || format === "ganz" || format === "tausendDiff") { return 0; }
-    if (format === "dollar") { return 2; }
+    if (format === "dollar" || format === "faktor") { return 2; }
     return 1;
   }
   function gerundet(v, format) {
@@ -138,9 +139,22 @@
     return "monat";
   }
 
-  // Einstufung gegen den Schwellenwert aus dem Trading Plan, z.B. "unter 50, Kontraktion"
+  // Einstufung gegen den Schwellenwert aus dem Trading Plan, z.B. "unter 50, Kontraktion".
+  // Variante mit mehreren Bereichen: k.stufen = [ { ueber: 52, text }, { ab: 48, text }, { text } ]
+  // von oben nach unten gelesen, der erste passende Bereich gilt ("ueber" = groesser,
+  // "ab" = groesser oder gleich, ohne Grenze = Rest).
   function stufeText(k, wert) {
-    if (!k.stufe || wert === null || wert === undefined || isNaN(wert)) { return null; }
+    if (wert === null || wert === undefined || isNaN(wert)) { return null; }
+    if (k.stufen) {
+      for (var i = 0; i < k.stufen.length; i++) {
+        var b = k.stufen[i];
+        if (b.ueber !== undefined && wert > b.ueber) { return b.text; }
+        if (b.ab !== undefined && wert >= b.ab) { return b.text; }
+        if (b.ueber === undefined && b.ab === undefined) { return b.text; }
+      }
+      return null;
+    }
+    if (!k.stufe) { return null; }
     var g = k.stufe.grenze;
     var gText = String(g).replace(".", ",");
     if (wert > g) { return "über " + gText + ", " + k.stufe.ueber; }
@@ -158,6 +172,36 @@
       ableitungSchritt: k.zweitreihe.ableitungSchritt,
       format: k.format
     };
+  }
+
+  // Serien-Regeln aus dem Trading Plan, z.B. "3 Monate unter 47".
+  // k.serien = [ { unter: 47, anzahl: 3, text: "anhaltende Kontraktion" } ] (oder "ueber")
+  // Zaehlt, wie viele Perioden am Stueck bis zum aktuellen Wert die Bedingung erfuellen.
+  function serienKennwerte(k, punkte, art) {
+    if (!k.serien || !punkte.length) { return []; }
+    var einheitName = art === "woche" ? ["Woche", "Wochen"] : art === "quartal" ? ["Quartal", "Quartale"] : ["Monat", "Monate"];
+    return k.serien.map(function (s) {
+      var grenze = s.unter !== undefined ? s.unter : s.ueber;
+      var n = 0;
+      for (var i = punkte.length - 1; i >= 0; i--) {
+        var ok = s.unter !== undefined ? punkte[i].v < s.unter : punkte[i].v > s.ueber;
+        if (!ok) { break; }
+        n++;
+      }
+      var titel = s.anzahl + " " + einheitName[1] + " " + (s.unter !== undefined ? "unter " : "über ") +
+        zahl(grenze, k.format);
+      var wert;
+      if (n >= s.anzahl) {
+        wert = "erreicht (" + n + " in Folge): " + s.text;
+      } else if (n === 0) {
+        wert = "nicht erfüllt";
+      } else {
+        wert = n + " von " + s.anzahl + " " + einheitName[1];
+      }
+      // Reicht die Serie bis zum ersten gespeicherten Wert, ist sie evtl. laenger
+      if (n > 0 && n === punkte.length && n < s.anzahl) { wert += " (Verlauf zu kurz)"; }
+      return { titel: titel, wert: wert };
+    });
   }
 
   // Echte Historie: mindestens zwei Jahre zwischen erstem und letztem Wert
@@ -815,6 +859,10 @@
       var stufe = stufeText(k, letzter.v);
       if (stufe) { kw.appendChild(kennwert("Einstufung", stufe)); }
 
+      serienKennwerte(k, punkte, art).forEach(function (s) {
+        kw.appendChild(kennwert(s.titel, s.wert));
+      });
+
       var zk = zweitKonfig(k);
       if (zk && k.zweitreihe.kennwert) {
         var zp = punkteVon(zk);
@@ -838,7 +886,8 @@
       if (k.trendFenster && punkte.length > k.trendFenster) {
         var alt = punkte[punkte.length - 1 - k.trendFenster].v;
         var richtungText = letzter.v > alt ? "steigend" : letzter.v < alt ? "fallend" : "seitwärts";
-        kw.appendChild(kennwert("Trend " + k.trendFenster + " Wochen", richtungText));
+        var fensterName = art === "woche" ? " Wochen" : art === "quartal" ? " Quartale" : " Monate";
+        kw.appendChild(kennwert("Trend " + k.trendFenster + fensterName, richtungText));
       }
 
       // Spanne nur bei echter Historie, Startjahr aus den Daten statt fest "2015"
