@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="de" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Makro-Dashboard · Plumbing</title>
+<link rel="stylesheet" href="stil.css">
+</head>
+<body>
+
+<header class="kopf">
+  <div class="kopf-zeile">
+    <div>
+      <a class="kopf-zurueck" href="index.html">← Übersicht</a>
+      <div class="kopf-pfad">Makro-Dashboard</div>
+      <h1>Plumbing</h1>
+    </div>
+    <button id="themaSchalter" class="thema-schalter" type="button" aria-label="Hell- oder Dunkelmodus umschalten">
+      <span class="thema-hell">Hell</span><span class="thema-dunkel">Dunkel</span>
+    </button>
+  </div>
+  <p class="kopf-frage">Wie läuft es hinter den Kulissen des Finanzsystems? Ist USD-Funding locker oder unter Stress, und wie angespannt ist das Marktumfeld insgesamt?</p>
+</header>
+
+<main id="kachelbereiche"></main>
+
+<footer class="fuss">
+  <span id="fussStand"></span>
+  <span class="fuss-trenner">·</span>
+  <span>Quellen: Federal Reserve Bank of New York, FRED (St. Louis Fed)</span>
+</footer>
+
+<!-- Detailansicht -->
+<div class="overlay" id="overlay" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="detailTitel">
+
+    <div class="dialog-kopf">
+      <div>
+        <h2 id="detailTitel"></h2>
+        <p class="dialog-unter" id="detailUnter"></p>
+      </div>
+      <button class="schliessen" id="schliessen" type="button" aria-label="Schließen">&times;</button>
+    </div>
+
+    <p class="prueffrage" id="detailFrage"></p>
+
+    <div class="kennwerte" id="detailKennwerte"></div>
+
+    <div class="steuerzeile" id="steuerzeile">
+      <div class="zeitraum" id="zeitraum" role="group" aria-label="Zeitraum"></div>
+      <button class="ansicht-schalter" id="ansichtSchalter" type="button">Tabelle anzeigen</button>
+    </div>
+
+    <figure class="graph-rahmen">
+      <div class="graph-behaelter" id="graphBehaelter"></div>
+      <figcaption id="graphLegende" class="legende"></figcaption>
+    </figure>
+
+    <div class="tabelle-behaelter" id="tabelleBehaelter" hidden></div>
+
+    <section class="aufschluesselung" id="aufschluesselung" hidden></section>
+
+    <div class="dialog-fuss">
+      <div id="detailQuelle"></div>
+      <div id="detailHinweis" class="hinweis"></div>
+    </div>
+
+  </div>
+</div>
+
+<script src="daten/plumbing.js"></script>
+<script src="bereiche/plumbing-kacheln.js"></script>
+<script src="motor.js"></script>
+</body>
+</html>
