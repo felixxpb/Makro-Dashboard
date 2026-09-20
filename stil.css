@@ -98,6 +98,13 @@ body {
   max-width: 62ch;
 }
 
+.kopf-knopfleiste {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .thema-schalter {
   flex: none;
   background: var(--flaeche);
@@ -112,6 +119,21 @@ body {
 .thema-schalter:hover { color: var(--text-primaer); }
 :root[data-theme="dark"] .thema-hell { display: none; }
 :root:not([data-theme="dark"]) .thema-dunkel { display: none; }
+
+.pdf-knopf {
+  flex: none;
+  background: var(--serie-1);
+  color: #fff;
+  border: 1px solid var(--serie-1);
+  border-radius: 8px;
+  padding: 7px 13px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.pdf-knopf:hover { filter: brightness(1.08); }
+.pdf-knopf:disabled { opacity: .6; cursor: wait; filter: none; }
 
 /* --- Gruppen ------------------------------------------------------------- */
 

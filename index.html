@@ -14,9 +14,12 @@
       <div class="kopf-pfad">Makro-Dashboard</div>
       <h1>Übersicht</h1>
     </div>
-    <button id="themaSchalter" class="thema-schalter" type="button" aria-label="Hell- oder Dunkelmodus umschalten">
-      <span class="thema-hell">Hell</span><span class="thema-dunkel">Dunkel</span>
-    </button>
+    <div class="kopf-knopfleiste">
+      <button id="pdfKnopf" class="pdf-knopf" type="button">PDF-Report herunterladen</button>
+      <button id="themaSchalter" class="thema-schalter" type="button" aria-label="Hell- oder Dunkelmodus umschalten">
+        <span class="thema-hell">Hell</span><span class="thema-dunkel">Dunkel</span>
+      </button>
+    </div>
   </div>
   <p class="kopf-frage">Der komplette Makro-Analyseprozess an einem Ort. Auf einen Bereich klicken für Kacheln, Graphen und Detailansichten.</p>
 </header>
@@ -41,11 +44,11 @@
     <span class="bereich-kachel-status status-fertig">13 Kennzahlen</span>
   </a>
 
-  <div class="bereich-kachel bereich-kachel-offen" aria-disabled="true">
+  <a class="bereich-kachel" href="sentiment.html">
     <div class="bereich-kachel-titel">Sentiment</div>
-    <p class="bereich-kachel-text">Positionierung und Marktstimmung</p>
-    <span class="bereich-kachel-status status-offen">in Arbeit</span>
-  </div>
+    <p class="bereich-kachel-text">COT-Positionierung: Large Speculators vs. Commercials für EUR, GBP, JPY, AUD, CAD, CHF, NZD, DXY, Gold</p>
+    <span class="bereich-kachel-status status-fertig">9 Kennzahlen</span>
+  </a>
 
   <a class="bereich-kachel" href="plumbing.html">
     <div class="bereich-kachel-titel">Plumbing</div>
@@ -85,5 +88,14 @@
   });
 })();
 </script>
+
+<!-- PDF-Report: jsPDF + AutoTable von CDN (braucht Internetverbindung), danach
+     motor.js nur zum Nachrechnen der Werte (baut auf dieser Seite keine
+     Kacheln, siehe Schutz in motor.js) und pdf-report.js fuer den Knopf. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/4.2.1/jspdf.umd.min.js"></script>
+<script>if (window.jspdf) { window.jsPDF = window.jspdf.jsPDF; }</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/5.0.8/jspdf.plugin.autotable.min.js"></script>
+<script src="motor.js"></script>
+<script src="pdf-report.js"></script>
 </body>
 </html>

@@ -32,7 +32,12 @@
   }
 
   function reihe(k) {
-    var quelle = QUELLEN[k.quelle];
+    // Live von window.QUELLEN lesen, nicht von der Momentaufnahme beim Laden
+    // dieses Skripts: der PDF-Report (pdf-report.js) laedt auf derselben Seite
+    // nacheinander mehrere Bereiche nach und setzt window.QUELLEN dafuer jedes
+    // Mal neu, lange nachdem motor.js selbst schon geladen ist.
+    var quellen = window.QUELLEN || QUELLEN;
+    var quelle = quellen[k.quelle];
     return (quelle && quelle.reihen) ? quelle.reihen[k.schluessel] : undefined;
   }
 
@@ -954,6 +959,9 @@
 
   function baueAlles() {
     var bereichsWurzel = document.getElementById("kachelbereiche");
+    // Ohne Kachel-Grundgeruest (z.B. wenn motor.js nur zum Nachrechnen der
+    // Werte fuer den PDF-Report geladen wird) gibt es hier nichts zu tun.
+    if (!bereichsWurzel) { return; }
 
     // Abschnitte (Gruppen) dynamisch aus der Konfiguration aufbauen
     var raster = {};
@@ -1014,5 +1022,21 @@
   } else {
     baueAlles();
   }
+
+  // Berechnungsfunktionen fuer Wiederverwendung ausserhalb der Kachel-Anzeige
+  // (aktuell: pdf-report.js auf der Startseite). Bewusst keine Logik doppelt
+  // gepflegt - der PDF-Report rechnet exakt so wie die Kacheln selbst.
+  window.MOTOR = {
+    reihe: reihe,
+    punkteVon: punkteVon,
+    zahl: zahl,
+    veraenderungText: veraenderungText,
+    gerundet: gerundet,
+    deltaKlasse: deltaKlasse,
+    stufeText: stufeText,
+    einheitVon: einheitVon,
+    datumText: datumText,
+    frequenzArt: frequenzArt
+  };
 
 })();
