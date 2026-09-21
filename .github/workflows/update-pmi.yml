@@ -1,48 +1,30 @@
-// scripts/update-pmi.js
-const fs = require('fs');
-const path = require('path');
-const vm = require('vm');
+name: Update ISM PMI Data
 
-const DATEN_PATH = path.join(__dirname, '..', 'daten', 'wachstum.js');
+on:
+  schedule:
+    - cron: '0 6 1-7 * 3'
+  workflow_dispatch:
 
-async function main() {
-  // 1. Aktuelle Datei laden und window.WACHSTUM_DATEN extrahieren
-  const raw = fs.readFileSync(DATEN_PATH, 'utf8');
-  const sandbox = { window: {} };
-  vm.createContext(sandbox);
-  vm.runInContext(raw, sandbox);
-  const daten = sandbox.window.WACHSTUM_DATEN;
+permissions:
+  contents: write
 
-  // 2. PMI-Daten von DBnomics abrufen (kostenlos, kein API-Key nötig)
-  const res = await fetch('https://api.db.nomics.world/v22/series/ISM/pmi/pm?observations=1');
-  if (!res.ok) throw new Error(`DBnomics-Fehler: ${res.status}`);
-  const json = await res.json();
-  const serie = json.series.docs[0];
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-  const punkte = serie.period.map((d, i) => ({ d, v: serie.value[i] }))
-    .filter(p => p.v !== null);
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
-  // 3. Serie in reihen einfügen/überschreiben
-  daten.reihen.ISM_PMI_MFG = {
-    id: 'ISM_PMI_MFG',
-    titel: 'ISM Manufacturing PMI',
-    frequenz: 'Monthly',
-    aktualisiert: new Date().toISOString().slice(0, 10),
-    quelle: 'ISM (via DBnomics)',
-    quelleUrl: 'https://db.nomics.world/ISM/pmi',
-    punkte,
-  };
+      - name: PMI-Daten abrufen und Datei aktualisieren
+        run: node scripts/update-pmi.js
 
-  // 4. Zeitstempel aktualisieren und Datei zurückschreiben
-  daten.erzeugt = new Date().toISOString().slice(0, 16).replace('T', ' ');
-
-  const output = `window.WACHSTUM_DATEN = ${JSON.stringify(daten, null, 2)};\n`;
-  fs.writeFileSync(DATEN_PATH, output, 'utf8');
-
-  console.log(`ISM PMI aktualisiert: ${punkte.length} Datenpunkte, letzter Wert ${punkte.at(-1).v} (${punkte.at(-1).d})`);
-}
-
-main().catch(err => {
-  console.error(err);
-  process.exit(1);
-});
+      - name: Änderungen committen
+        run: |
+          git config user.name "PMI-Update-Bot"
+          git config user.email "actions@github.com"
+          git add daten/wachstum.js
+          git diff --staged --quiet || git commit -m "Auto-Update: ISM PMI Daten"
+          git push
