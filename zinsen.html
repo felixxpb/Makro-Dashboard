@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="de" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Makro-Dashboard · Zinsen</title>
+<link rel="stylesheet" href="stil.css">
+</head>
+<body>
+
+<header class="kopf">
+  <div class="kopf-zeile">
+    <div>
+      <a class="kopf-zurueck" href="index.html">← Übersicht</a>
+      <div class="kopf-pfad">Makro-Dashboard</div>
+      <h1>Zinsen</h1>
+    </div>
+    <button id="themaSchalter" class="thema-schalter" type="button" aria-label="Hell- oder Dunkelmodus umschalten">
+      <span class="thema-hell">Hell</span><span class="thema-dunkel">Dunkel</span>
+    </button>
+  </div>
+  <p class="kopf-frage">Wo stehen die Leitzinsen der wichtigsten Notenbanken, was erwartet die FED selbst, und wie sieht die reale Verzinsung in den USA aus?</p>
+</header>
+
+<main id="kachelbereiche"></main>
+
+<footer class="fuss">
+  <span id="fussStand"></span>
+  <span class="fuss-trenner">·</span>
+  <span>Quellen: FRED (St. Louis Fed)</span>
+</footer>
+
+<!-- Detailansicht -->
+<div class="overlay" id="overlay" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="detailTitel">
+
+    <div class="dialog-kopf">
+      <div>
+        <h2 id="detailTitel"></h2>
+        <p class="dialog-unter" id="detailUnter"></p>
+      </div>
+      <button class="schliessen" id="schliessen" type="button" aria-label="Schließen">&times;</button>
+    </div>
+
+    <p class="prueffrage" id="detailFrage"></p>
+
+    <div class="kennwerte" id="detailKennwerte"></div>
+
+    <div class="steuerzeile" id="steuerzeile">
+      <div class="zeitraum" id="zeitraum" role="group" aria-label="Zeitraum"></div>
+      <button class="ansicht-schalter" id="ansichtSchalter" type="button">Tabelle anzeigen</button>
+    </div>
+
+    <figure class="graph-rahmen">
+      <div class="graph-behaelter" id="graphBehaelter"></div>
+      <figcaption id="graphLegende" class="legende"></figcaption>
+    </figure>
+
+    <div class="tabelle-behaelter" id="tabelleBehaelter" hidden></div>
+
+    <section class="aufschluesselung" id="aufschluesselung" hidden></section>
+
+    <div class="dialog-fuss">
+      <div id="detailQuelle"></div>
+      <div id="detailHinweis" class="hinweis"></div>
+    </div>
+
+  </div>
+</div>
+
+<script src="daten/regime.js"></script>
+<script src="daten/zinsen.js"></script>
+<script src="bereiche/zinsen-kacheln.js"></script>
+<script src="motor.js"></script>
+<script>
+/* ===========================================================================
+   FED-Zinserwartung (FOMC Dot Plot) und Breakeven-Einordnungstabelle. Kein
+   Teil des generischen Kachel-Motors (motor.js): FEDTARMD ist eine
+   Zieljahr-Projektion (siehe Daten-Abrufen-Zinsen.ps1), keine gewoehnliche
+   Zeitreihe. Gleiches Muster wie die Regime-Klassifikation in regime.html:
+   haengt sich nach den generischen Kachel-Gruppen an #kachelbereiche an.
+   =========================================================================== */
+(function () {
+  "use strict";
+  var daten = window.ZINSEN_DATEN;
+  if (!daten) { return; }
+  var wurzel = document.getElementById("kachelbereiche");
+
+  function el(tag, klasse, text) {
+    var n = document.createElement(tag);
+    if (klasse) { n.className = klasse; }
+    if (text !== undefined && text !== null) { n.textContent = String(text); }
+    return n;
+  }
+
+  function kommazahl(w) {
+    if (w === null || w === undefined || isNaN(w)) { return "–"; }
+    return w.toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 2 });
+  }
+
+  /* --- FOMC Dot Plot -------------------------------------------------------- */
+  if (daten.dotplot && daten.dotplot.ziele && daten.dotplot.ziele.length) {
+    var dp = daten.dotplot;
+    var abschnitt = el("section", "gruppe");
+    abschnitt.setAttribute("aria-labelledby", "g-dotplot");
+    var h2 = el("h2", null, "FED-Zinserwartung (FOMC Dot Plot, Median)");
+    h2.id = "g-dotplot";
+    abschnitt.appendChild(h2);
+    abschnitt.appendChild(el("p", "gruppe-hinweis",
+      "Median-Projektion der FOMC-Mitglieder fuer den Fed Funds Rate am jeweiligen Jahresende, aus der oeffentlichen Summary of Economic Projections. " +
+      "Wird vierteljaehrlich neu veroeffentlicht (Maerz/Juni/September/Dezember) und dann komplett ersetzt, ist also keine fortlaufende Zeitreihe. " +
+      "Fuer die anderen sieben Notenbanken gibt es keine vergleichbare kostenlose, strukturierte Quelle (Details: Datenquellen_Zinsen.md)."));
+
+    var karten = el("div", "kennwerte");
+    dp.ziele.forEach(function (z) {
+      var karte = el("div", "regime-karte");
+      karte.appendChild(el("div", "regime-karte-titel", String(z.jahr)));
+      karte.appendChild(el("div", "regime-karte-wert", kommazahl(z.wert) + " %"));
+      karten.appendChild(karte);
+    });
+    if (dp.langfristig !== null && dp.langfristig !== undefined) {
+      var karteLr = el("div", "regime-karte");
+      karteLr.appendChild(el("div", "regime-karte-titel", "Langfristig"));
+      karteLr.appendChild(el("div", "regime-karte-wert", kommazahl(dp.langfristig) + " %"));
+      karten.appendChild(karteLr);
+    }
+    abschnitt.appendChild(karten);
+    wurzel.appendChild(abschnitt);
+  }
+
+  /* --- Breakeven-Einordnungstabelle (statisch, aus dem Trading Plan) ------- */
+  var refAbschnitt = el("section", "gruppe");
+  refAbschnitt.setAttribute("aria-labelledby", "g-breakeven");
+  var h2b = el("h2", null, "Einordnung Breakeven-Inflation");
+  h2b.id = "g-breakeven";
+  refAbschnitt.appendChild(h2b);
+  refAbschnitt.appendChild(el("p", "referenz-hinweis",
+    "Grobe Orientierung aus dem Trading Plan, keine feste Regel. Der aktuelle 10-Jahres-Breakeven steht in der Kachel oben."));
+
+  var tabelleBox = el("div", "referenz-tabelle");
+  var tabelle = document.createElement("table");
+  var thead = document.createElement("thead");
+  var kopfZeile = document.createElement("tr");
+  ["Breakeven-Bereich", "Einordnung"].forEach(function (t) {
+    var th = document.createElement("th");
+    th.textContent = t;
+    kopfZeile.appendChild(th);
+  });
+  thead.appendChild(kopfZeile);
+  tabelle.appendChild(thead);
+
+  var zeilen = [
+    ["> 3,0 %", "Markt preist hohe Inflation ein"],
+    ["~ 2,5 – 3,0 %", "Warnsignal inflationär"],
+    ["~ 2,0 – 2,5 %", "Moderate Inflation erwartet (FED-Ziel)"],
+    ["~ 1,5 – 2,0 %", "Warnsignal deflationär"],
+    ["< 1,5 %", "Deflationsangst"]
+  ];
+  var tbody = document.createElement("tbody");
+  zeilen.forEach(function (z) {
+    var tr = document.createElement("tr");
+    tr.appendChild(el("td", null, z[0]));
+    tr.appendChild(el("td", null, z[1]));
+    tbody.appendChild(tr);
+  });
+  tabelle.appendChild(tbody);
+  tabelleBox.appendChild(tabelle);
+  refAbschnitt.appendChild(tabelleBox);
+  wurzel.appendChild(refAbschnitt);
+})();
+</script>
+</body>
+</html>

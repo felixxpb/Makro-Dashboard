@@ -17,8 +17,8 @@
   "use strict";
 
   // Reihenfolge und Quelldateien je Bereich. Sentiment (verworfene Version 1,
-  // siehe README Abschnitt 1) und Zinsen (noch nicht gebaut) sind bewusst
-  // aussen vor - hier ergaenzen, sobald sie fertig online sind.
+  // siehe README Abschnitt 1) ist bewusst aussen vor - hier ergaenzen, sobald
+  // eine neue Version fertig online ist.
   var BEREICHE = [
     {
       name: "Arbeitsmarkt",
@@ -45,6 +45,12 @@
       frage: "In welchem Zinskurven- und Marktregime befinden wir uns, und welche Assets performen erfahrungsgemäß in diesem Umfeld?",
       dateien: ["daten/regime.js", "bereiche/regime-kacheln.js"],
       klassifikation: true
+    },
+    {
+      name: "Zinsen",
+      frage: "Wo stehen die Leitzinsen der wichtigsten Notenbanken, was erwartet die FED selbst, und wie sieht die reale Verzinsung in den USA aus?",
+      dateien: ["daten/regime.js", "daten/zinsen.js", "bereiche/zinsen-kacheln.js"],
+      dotplot: true
     }
   ];
 
@@ -171,6 +177,17 @@
     });
   }
 
+  function leseDotplot(daten) {
+    if (!daten || !daten.dotplot || !daten.dotplot.ziele || !daten.dotplot.ziele.length) { return null; }
+    var zeilen = daten.dotplot.ziele.map(function (z) {
+      return { titel: String(z.jahr), wert: z.wert.toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 2 }) + " %" };
+    });
+    if (daten.dotplot.langfristig !== null && daten.dotplot.langfristig !== undefined) {
+      zeilen.push({ titel: "Langfristig", wert: daten.dotplot.langfristig.toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 2 }) + " %" });
+    }
+    return zeilen;
+  }
+
   async function ladeBereichsDaten(bereich) {
     await ladeDateienNacheinander(bereich.dateien, bereich.name);
 
@@ -194,7 +211,8 @@
       frage: bereich.frage,
       stand: standHuebsch(standAusQuellen(window.QUELLEN || {})),
       gruppen: gruppen,
-      klassifikation: bereich.klassifikation ? leseKlassifikation(window.REGIME_DATEN) : null
+      klassifikation: bereich.klassifikation ? leseKlassifikation(window.REGIME_DATEN) : null,
+      dotplot: bereich.dotplot ? leseDotplot(window.ZINSEN_DATEN) : null
     };
     return ergebnis;
   }
@@ -303,6 +321,23 @@
           startY: y,
           head: [["Einstufung", "Wert", "Seit"]],
           body: bereich.klassifikation.map(function (e) { return [e.titel, e.wert, e.seit]; }),
+          styles: { fontSize: 8, cellPadding: 2, textColor: [30, 30, 30] },
+          headStyles: { fillColor: FARBE_KOPF, textColor: 255 },
+          margin: { left: 14, right: 14 }
+        });
+        y = doc.lastAutoTable.finalY + 7;
+      }
+
+      if (bereich.dotplot && bereich.dotplot.length) {
+        y = platzPruefen(doc, y, 30);
+        doc.setFontSize(11);
+        doc.setTextColor(20);
+        doc.text("FED-Zinserwartung (FOMC Dot Plot, Median)", 14, y);
+        y += 4;
+        doc.autoTable({
+          startY: y,
+          head: [["Zieljahr", "Median-Projektion"]],
+          body: bereich.dotplot.map(function (e) { return [e.titel, e.wert]; }),
           styles: { fontSize: 8, cellPadding: 2, textColor: [30, 30, 30] },
           headStyles: { fillColor: FARBE_KOPF, textColor: 255 },
           margin: { left: 14, right: 14 }
