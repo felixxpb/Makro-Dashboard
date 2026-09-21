@@ -1,30 +1,44 @@
-name: Update ISM PMI Data
+// scripts/update-pmi.js
+const fs = require('fs');
+const path = require('path');
+const vm = require('vm');
 
-on:
-  schedule:
-    - cron: '0 6 1-7 * 3'   # jeden 1. Mittwoch im Monat, 6 Uhr UTC (PMI erscheint i.d.R. Anfang Monats)
-  workflow_dispatch:         # erlaubt manuellen Start über den "Run workflow"-Button
+const DATEN_PATH = path.join(__dirname, '..', 'daten', 'wachstum.js');
 
-permissions:
-  contents: write
+async function main() {
+  const raw = fs.readFileSync(DATEN_PATH, 'utf8');
+  const sandbox = { window: {} };
+  vm.createContext(sandbox);
+  vm.runInContext(raw, sandbox);
+  const daten = sandbox.window.WACHSTUM_DATEN;
 
-jobs:
-  update:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+  const res = await fetch('https://api.db.nomics.world/v22/series/ISM/pmi/pm?observations=1');
+  if (!res.ok) throw new Error(`DBnomics-Fehler: ${res.status}`);
+  const json = await res.json();
+  const serie = json.series.docs[0];
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+  const punkte = serie.period.map((d, i) => ({ d, v: serie.value[i] }))
+    .filter(p => p.v !== null);
 
-      - name: PMI-Daten abrufen und Datei aktualisieren
-        run: node scripts/update-pmi.js
+  daten.reihen.ISM_PMI_MFG = {
+    id: 'ISM_PMI_MFG',
+    titel: 'ISM Manufacturing PMI',
+    frequenz: 'Monthly',
+    aktualisiert: new Date().toISOString().slice(0, 10),
+    quelle: 'ISM (via DBnomics)',
+    quelleUrl: 'https://db.nomics.world/ISM/pmi',
+    punkte,
+  };
 
-      - name: Änderungen committen
-        run: |
-          git config user.name "PMI-Update-Bot"
-          git config user.email "actions@github.com"
-          git add daten/wachstum.js
-          git diff --staged --quiet || git commit -m "Auto-Update: ISM PMI Daten"
-          git push
+  daten.erzeugt = new Date().toISOString().slice(0, 16).replace('T', ' ');
+
+  const output = `window.WACHSTUM_DATEN = ${JSON.stringify(daten, null, 2)};\n`;
+  fs.writeFileSync(DATEN_PATH, output, 'utf8');
+
+  console.log(`ISM PMI aktualisiert: ${punkte.length} Datenpunkte, letzter Wert ${punkte.at(-1).v} (${punkte.at(-1).d})`);
+}
+
+main().catch(err => {
+  console.error(err);
+  process.exit(1);
+});
