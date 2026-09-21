@@ -11,9 +11,10 @@
    =========================================================================== */
 
 window.QUELLEN = {
-  fred:        window.INFLATION_DATEN,
-  web:         window.WEBQUELLEN_DATEN,
-  arbeitsmarkt: window.ARBEITSMARKT_DATEN
+  fred:          window.INFLATION_DATEN,
+  web:           window.WEBQUELLEN_DATEN,
+  arbeitsmarkt:  window.ARBEITSMARKT_DATEN,
+  cpiKategorien: window.CPI_KATEGORIEN_DATEN
 };
 
 window.GRUPPEN = [
@@ -33,16 +34,15 @@ window.KACHELN = [
     format: "prozent", richtung: "neutral",
     ableitung: "yoy", ableitungSchritt: 12,
     vergleich: 1, vergleichName: "Vormonat",
-    aufschluesselung: {
-      titel: "CPI nach Kategorien, YoY",
-      hinweis: "Veränderungsrate je Kategorie zum Vorjahr, nicht ihr Gewicht im Gesamtwert. Die gestrichelte Linie markiert den Headline-Wert. Core Services enthält Shelter.",
-      kategorien: [
-        { schluessel: "CUSR0000SAH1",   name: "Shelter" },
-        { schluessel: "CPIENGSL",       name: "Energy" },
-        { schluessel: "CPIUFDSL",       name: "Food" },
-        { schluessel: "CUSR0000SACL1E", name: "Core Goods" },
-        { schluessel: "CUSR0000SASLE",  name: "Core Services" }
-      ]
+    // Entscheidung Felix, 2026-09-21: die CPI-Kategorie-Aufschluesselung kommt
+    // jetzt von BLS statt FRED (17 statt 5 Kategorien, 12-Monats-Navigation).
+    // Ersetzt das bisherige "aufschluesselung"-Feld NUR bei dieser Kachel.
+    // Die FRED-Aufschluesselung (baueAufschluesselung) bleibt als Mechanismus
+    // unveraendert bestehen und wird weiter von der PPI-Kachel benutzt.
+    aufschluesselungBLS: {
+      titel: "CPI nach Kategorien (BLS), YoY",
+      hinweis: "Veränderungsrate je Kategorie zum Vorjahr, nicht ihr Gewicht im Gesamtwert, direkt von BLS (nicht saisonbereinigt). Mit den Pfeilen lassen sich die letzten 12 Monate durchblättern, je Monat zusätzlich der Vormonat zum Vergleich. Core Services (Services less energy services) enthält Shelter.",
+      quelle: "cpiKategorien"
     }
   },
   {
@@ -94,7 +94,7 @@ window.KACHELN = [
     untertitel: "Preisindex der Einkaufsmanager, Industrie",
     frage: "Was erwarten die Einkaufsmanager fuer die Preise?",
     einordnung: "Werte ueber 50 gelten laut Trading Plan als inflationaer. Steigend = hoehere Inflation erwartet, sinkend = niedrigere.",
-    format: "punkte", richtung: "neutral",
+    format: "punkte", richtung: "neutral", pmiFarbe: true,
     schwellen: [{ wert: 50, text: "inflationaer / nicht inflationaer" }],
     stufe: { grenze: 50, ueber: "inflationaer", unter: "nicht inflationaer" },
     vergleich: 1, vergleichName: "Vormonat"
@@ -105,7 +105,7 @@ window.KACHELN = [
     untertitel: "Preisindex der Einkaufsmanager, Dienstleistung",
     frage: "Was erwarten die Einkaufsmanager fuer die Preise?",
     einordnung: "Werte ueber 50 gelten laut Trading Plan als inflationaer. Steigend = hoehere Inflation erwartet, sinkend = niedrigere.",
-    format: "punkte", richtung: "neutral",
+    format: "punkte", richtung: "neutral", pmiFarbe: true,
     schwellen: [{ wert: 50, text: "inflationaer / nicht inflationaer" }],
     stufe: { grenze: 50, ueber: "inflationaer", unter: "nicht inflationaer" },
     vergleich: 1, vergleichName: "Vormonat"
@@ -117,7 +117,7 @@ window.KACHELN = [
     frage: "Entsteht Inflation gerade auf der Angebotsseite?",
     einordnung: "Ueber 0: Lieferkette verlaengert sich, Angebot verknappt sich, mehr Inflation bei gleicher Nachfrage. Unter 0: Lieferkette verkuerzt sich, Angebot erhoeht sich, weniger Inflation.",
     format: "punkte", einheitFest: "", richtung: "neutral",
-    schwellen: [{ wert: 0, text: "Nulllinie" }],
+    schwellen: [{ wert: 0, text: "" }],
     stufe: { grenze: 0, ueber: "Lieferkette angespannt", unter: "Lieferkette entspannt" },
     vergleich: 1, vergleichName: "Vormonat"
   },

@@ -42,9 +42,22 @@ window.KACHELN = [
     frage: "Wie entwickelt sich die Beschäftigung insgesamt?",
     einordnung: "Gezeigt wird die monatliche Veränderung, nicht der Bestand. Die Nulllinie trennt Aufbau von Abbau.",
     format: "tausendDiff", richtung: "hoch_gut",
-    ableitung: "diff", schwellen: [{ wert: 0, text: "Nulllinie" }],
+    ableitung: "diff", schwellen: [{ wert: 0, text: "" }],
     // Der Wert ist schon eine Veraenderung. Daneben steht deshalb der
     // Vormonatswert, nicht die Differenz zweier Differenzen.
+    vergleichArt: "vorwert", vergleichName: "Vormonat"
+  },
+  {
+    schluessel: "AHE", quelle: "web", gruppe: "harte",
+    titel: "Average Hourly Earnings",
+    untertitel: "Durchschnittlicher Stundenlohn, Veränderung zum Vormonat",
+    frage: "Wie stark steigen die Löhne?",
+    einordnung: "Lohnwachstum ist im Makro-Kontext nicht eindeutig gut oder schlecht: es stützt den Konsum, kann aber gleichzeitig die Service-Inflation antreiben. Gezeigt wird die monatliche Veränderungsrate, nicht der Dollarbetrag.",
+    format: "prozent", richtung: "neutral",
+    schwellen: [{ wert: 0, text: "" }],
+    // Der Wert ist schon eine Veraenderung (MoM %). Daneben steht deshalb der
+    // Vormonatswert, nicht die Differenz zweier Differenzen (gleiches Muster
+    // wie bei Nonfarm Payrolls).
     vergleichArt: "vorwert", vergleichName: "Vormonat"
   },
 
@@ -93,7 +106,7 @@ window.KACHELN = [
     untertitel: "Beschäftigungsindex Industrie",
     frage: "Was erwarten die Einkaufsmanager?",
     einordnung: "Werte über 50 bedeuten Expansion, unter 50 Kontraktion. Laut Trading Plan zählen Gesamttrend und die letzten 3 bis 4 Monate.",
-    format: "punkte", richtung: "hoch_gut",
+    format: "punkte", richtung: "hoch_gut", pmiFarbe: true,
     schwellen: [{ wert: 50, text: "Expansion / Kontraktion" }],
     stufe: { grenze: 50, ueber: "Expansion", unter: "Kontraktion" }
   },
@@ -103,7 +116,7 @@ window.KACHELN = [
     untertitel: "Beschäftigungsindex Dienstleistung",
     frage: "Was erwarten die Einkaufsmanager?",
     einordnung: "Werte über 50 bedeuten Expansion, unter 50 Kontraktion. Laut Trading Plan zählen Gesamttrend und die letzten 3 bis 4 Monate.",
-    format: "punkte", richtung: "hoch_gut",
+    format: "punkte", richtung: "hoch_gut", pmiFarbe: true,
     schwellen: [{ wert: 50, text: "Expansion / Kontraktion" }],
     stufe: { grenze: 50, ueber: "Expansion", unter: "Kontraktion" }
   },

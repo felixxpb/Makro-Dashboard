@@ -32,7 +32,7 @@ window.KACHELN = [
     frage: "Welches Wachstum zeichnet sich für das laufende Quartal ab?",
     einordnung: "GDPNow wird während des Quartals nach jeder relevanten Datenveröffentlichung neu berechnet. Der Wert auf der Kachel ist die aktuellste Schätzung, frühere Quartale zeigen die letzte Schätzung vor der offiziellen GDP-Zahl. Aus der KW38-Analyse: entscheidend ist, wie nachhaltig der Konsum hinter der Prognose ist.",
     format: "prozent", einheitFest: "% ann.", richtung: "neutral",
-    schwellen: [{ wert: 0, text: "Nulllinie" }],
+    schwellen: [{ wert: 0, text: "" }],
     vergleichArt: "vorwert", vergleichName: "Vorquartal"
   },
   {
@@ -42,7 +42,7 @@ window.KACHELN = [
     frage: "Wie stark ist die US-Wirtschaft im letzten Quartal tatsächlich gewachsen?",
     einordnung: "Gesamtwert aller produzierten Endgüter und Dienstleistungen, preisbereinigt. Im Detail liegt die GDPNow-Schätzung als zweite Linie daneben: so ist sichtbar, wie weit Prognose und tatsächliche Zahl je Quartal auseinanderlagen.",
     format: "prozent", einheitFest: "% ann.", richtung: "neutral",
-    schwellen: [{ wert: 0, text: "Nulllinie" }],
+    schwellen: [{ wert: 0, text: "" }],
     vergleichArt: "vorwert", vergleichName: "Vorquartal",
     hauptName: "Real GDP (BEA)",
     zweitreihe: { schluessel: "GDPNOW", quelle: "wachstum", name: "GDPNow (letzte Schätzung)" }
@@ -55,7 +55,7 @@ window.KACHELN = [
     untertitel: "Neue Bestellungen, Einkaufsmanager Industrie",
     frage: "Wohin läuft die Produktion?",
     einordnung: "Neue Bestellungen sagen voraus, wo die Produktion hinläuft. Laut Trading Plan: 48 bis 52 Normalbereich, über 52 Expansion, 3 Monate unter 47 anhaltende Kontraktion, 6 Monate unter 48 starkes Warnsignal. Im Detail liegt der Backlog Index als zweite Linie daneben: bewegen sich beide gleich, ist die Vorhersagekraft größer.",
-    format: "punkte", richtung: "neutral",
+    format: "punkte", richtung: "neutral", pmiFarbe: true,
     schwellen: [{ wert: 52, text: "52 Expansion" }, { wert: 48, text: "48" }, { wert: 47, text: "47" }],
     stufen: [
       { ueber: 52, text: "über 52, Expansion" },
@@ -76,7 +76,7 @@ window.KACHELN = [
     untertitel: "Unerledigte Bestellungen, Einkaufsmanager Industrie",
     frage: "Können unerledigte Aufträge sinkende New Orders abfedern?",
     einordnung: "Sinkende New Orders können laut Trading Plan durch Aufträge im Backlog abgefedert werden. Sinken New Orders und Backlog gemeinsam, wird weniger produziert und das GDP sinkt. Der Trading Plan nennt für den Backlog keine eigenen Schwellen.",
-    format: "punkte", richtung: "neutral",
+    format: "punkte", richtung: "neutral", pmiFarbe: true,
     vergleich: 1, vergleichName: "Vormonat",
     hauptName: "Backlog of Orders",
     zweitreihe: { schluessel: "ISM_MFG_NO", quelle: "web", name: "New Orders" }
@@ -87,7 +87,7 @@ window.KACHELN = [
     untertitel: "Geschäftsaktivität, Einkaufsmanager Dienstleistung",
     frage: "Wie aktiv ist der Dienstleistungssektor?",
     einordnung: "Service PMI laut Trading Plan: 50,5 bis 54,5 Normalbereich, über 54,5 Expansion, 3 Monate unter 49,5 anhaltende Kontraktion, 6 Monate unter 50,5 starkes Warnsignal. Gezeigt wird der Teilindex Business Activity, wie im ursprünglich verlinkten MacroMicro-Chart.",
-    format: "punkte", richtung: "neutral",
+    format: "punkte", richtung: "neutral", pmiFarbe: true,
     schwellen: [{ wert: 54.5, text: "54,5 Expansion" }, { wert: 50.5, text: "50,5" }, { wert: 49.5, text: "49,5" }],
     stufen: [
       { ueber: 54.5, text: "über 54,5, Expansion" },

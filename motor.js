@@ -209,11 +209,23 @@
     });
   }
 
-  // Echte Historie: mindestens zwei Jahre zwischen erstem und letztem Wert
-  function hatHistorie(punkte) {
-    if (punkte.length < 2) { return false; }
-    var tage = (new Date(punkte[punkte.length - 1].d) - new Date(punkte[0].d)) / 86400000;
-    return tage >= 730;
+  // PMI-/ISM-Diffusionsindizes: Skala um 50 zentriert, ueber 50 = Expansion.
+  // Bewusste Ausnahme von der Regel "Zahlen tragen nie die Seriennfarbe"
+  // (README Abschnitt 6) - hier explizit gewuenscht (nur bei k.pmiFarbe = true).
+  function pmiKlasse(wert) {
+    if (wert === null || wert === undefined || isNaN(wert)) { return ""; }
+    if (wert > 50) { return "pmi-gut"; }
+    if (wert < 50) { return "pmi-schlecht"; }
+    return "";
+  }
+
+  // Reine Vorzeichen-Regel fuer die 1/3/6-Monats-Trend-Kennwerte in der
+  // Detailansicht: KEIN Bezug auf k.richtung (anders als deltaKlasse, das die
+  // Kachel-Badge einfaerbt). Positiv = gruen, negativ = rot, null = neutral.
+  function vorzeichenKlasse(diff) {
+    if (diff > 0) { return "delta-gut"; }
+    if (diff < 0) { return "delta-schlecht"; }
+    return "delta-neutral";
   }
 
   /* --- Verlaufslinie auf der Kachel -------------------------------------- */
@@ -297,7 +309,8 @@
     knopf.appendChild(el("div", "kachel-titel", k.titel));
 
     var wertzeile = el("div", "kachel-wertzeile");
-    wertzeile.appendChild(el("span", "kachel-wert", zahl(letzter.v, k.format)));
+    var wertKlasse = "kachel-wert" + (k.pmiFarbe ? " " + pmiKlasse(letzter.v) : "");
+    wertzeile.appendChild(el("span", wertKlasse, zahl(letzter.v, k.format)));
     var einheit = einheitVon(k);
     if (einheit) { wertzeile.appendChild(el("span", "kachel-einheit", einheit)); }
 
@@ -360,7 +373,8 @@
     var einheit = einheitVon(k);
 
     var zeile = el("div", "einzelwert-zeile");
-    zeile.appendChild(el("span", "einzelwert-zahl", zahl(letzter.v, k.format)));
+    var zahlKlasse = "einzelwert-zahl" + (k.pmiFarbe ? " " + pmiKlasse(letzter.v) : "");
+    zeile.appendChild(el("span", zahlKlasse, zahl(letzter.v, k.format)));
     if (einheit) { zeile.appendChild(el("span", "einzelwert-einheit", einheit)); }
     box.appendChild(zeile);
 
@@ -389,6 +403,10 @@
   var aktuelleKachel = null;
   var aktuellerZeitraum = "alle";
   var tabelleSichtbar = false;
+  // Gewaehlter Monatsindex der BLS-CPI-Kategorie-Navigation: 0 = neuester
+  // Monat, bis 11 = 12 Monate zurueck. Wird bei jedem oeffneDetail() auf 0
+  // zurueckgesetzt (siehe unten).
+  var blsMonatsIndex = 0;
 
   function gefiltert(punkte, zeitraum) {
     if (zeitraum === "alle" || !punkte.length) { return punkte; }
@@ -801,6 +819,186 @@
     ziel.hidden = false;
   }
 
+  /* --- Kategorie-Aufschluesselung von BLS (nur CPI Headline) -------------
+     Zweiter, unabhaengiger Mechanismus neben baueAufschluesselung (der
+     bleibt unveraendert fuer PPI). Zeigt alle Kategorien eines waehlbaren
+     Monats plus dessen Vormonat als zwei Balken je Zeile, mit Pfeil-
+     Navigation ueber die letzten 12 Monate. Konfiguration an der Kachel:
+     aufschluesselungBLS = { titel, hinweis, quelle }
+     ---------------------------------------------------------------------- */
+
+  function baueAufschluesselungBLS(k) {
+    var ziel = document.getElementById("aufschluesselungBLS");
+    if (!ziel) { return; }
+    ziel.innerHTML = "";
+    ziel.hidden = true;
+    var a = k.aufschluesselungBLS;
+    if (!a) { return; }
+
+    var quellen = window.QUELLEN || QUELLEN;
+    var daten = quellen[a.quelle];
+    if (!daten || !daten.monate || daten.monate.length < 2) { return; }
+
+    var monate = daten.monate; // chronologisch aufsteigend, letzter Eintrag = neuester Monat
+    var n = monate.length;
+    // Navigation: Index 0 = neuester Monat, jeder braucht einen Vormonat
+    var maxIndex = Math.min(11, n - 2);
+    if (blsMonatsIndex > maxIndex) { blsMonatsIndex = 0; }
+    if (blsMonatsIndex < 0) { blsMonatsIndex = 0; }
+
+    ziel.hidden = false;
+
+    function render() {
+      ziel.innerHTML = "";
+      var aktIdx = n - 1 - blsMonatsIndex;
+      var vorIdx = aktIdx - 1;
+      var aktMonat = monate[aktIdx];
+      var vorMonat = monate[vorIdx];
+
+      ziel.appendChild(el("h3", "aufschl-titel", a.titel));
+      if (a.hinweis) { ziel.appendChild(el("p", "aufschl-hinweis", a.hinweis)); }
+
+      var nav = el("div", "aufschl-nav");
+      var zurueck = el("button", "aufschl-pfeil", "← 1 Monat zurück");
+      zurueck.type = "button";
+      zurueck.disabled = blsMonatsIndex >= maxIndex;
+      zurueck.addEventListener("click", function () { blsMonatsIndex++; render(); });
+
+      var vorwaerts = el("button", "aufschl-pfeil", "1 Monat vor →");
+      vorwaerts.type = "button";
+      vorwaerts.disabled = blsMonatsIndex <= 0;
+      vorwaerts.addEventListener("click", function () { blsMonatsIndex--; render(); });
+
+      nav.appendChild(zurueck);
+      nav.appendChild(el("span", "aufschl-nav-label", datumText(aktMonat.d, "monat")));
+      nav.appendChild(vorwaerts);
+      ziel.appendChild(nav);
+
+      var hauptWert = aktMonat.werte["alleWaren"];
+
+      var zeilen = daten.kategorien.map(function (kat) {
+        return {
+          name: kat.name,
+          wert: aktMonat.werte[kat.key],
+          vorher: vorMonat ? vorMonat.werte[kat.key] : null
+        };
+      }).filter(function (z) { return z.wert !== undefined && z.wert !== null; });
+      if (!zeilen.length) { return; }
+      zeilen.sort(function (x, y) { return y.wert - x.wert; });
+
+      var werteAlle = [0];
+      if (hauptWert !== undefined && hauptWert !== null) { werteAlle.push(hauptWert); }
+      zeilen.forEach(function (z) {
+        werteAlle.push(z.wert);
+        if (z.vorher !== null && z.vorher !== undefined) { werteAlle.push(z.vorher); }
+      });
+      var min = Math.min.apply(null, werteAlle), max = Math.max.apply(null, werteAlle);
+      var spanne = (max - min) || 1;
+      function pos(v) { return ((v - min) / spanne) * 100; }
+
+      var liste = el("div", "aufschl-liste");
+      liste.setAttribute("role", "table");
+      liste.setAttribute("aria-label", a.titel);
+
+      var kopf = el("div", "aufschl-zeile aufschl-kopf");
+      kopf.setAttribute("role", "row");
+      kopf.appendChild(el("span", "aufschl-name", "Kategorie"));
+      var kopfSpur = el("span", "aufschl-spur");
+      if (hauptWert !== undefined && hauptWert !== null) {
+        var marke = el("span", "aufschl-marke-text", "All items " + zahl(hauptWert, "prozent") + " %");
+        var markePos = pos(hauptWert);
+        if (markePos > 60) { marke.style.right = (100 - markePos) + "%"; marke.style.textAlign = "right"; }
+        else { marke.style.left = markePos + "%"; }
+        kopfSpur.appendChild(marke);
+      }
+      kopf.appendChild(kopfSpur);
+      kopf.appendChild(el("span", "aufschl-zahl", "% YoY"));
+      kopf.appendChild(el("span", "aufschl-zahl", "ggü. Vormonat"));
+      liste.appendChild(kopf);
+
+      zeilen.forEach(function (z) {
+        var zeile = el("div", "aufschl-zeile");
+        zeile.setAttribute("role", "row");
+        zeile.appendChild(el("span", "aufschl-name", z.name));
+
+        var spur = el("span", "aufschl-spur aufschl-spur-doppel");
+        var null0 = el("span", "aufschl-null");
+        null0.style.left = pos(0) + "%";
+        spur.appendChild(null0);
+
+        if (hauptWert !== undefined && hauptWert !== null) {
+          var hauptLinie = el("span", "aufschl-hauptlinie");
+          hauptLinie.style.left = pos(hauptWert) + "%";
+          spur.appendChild(hauptLinie);
+        }
+
+        var balkenAktuell = el("span", "aufschl-balken aufschl-balken-aktuell" + (z.wert < 0 ? " negativ" : ""));
+        var vonA = Math.min(pos(0), pos(z.wert));
+        balkenAktuell.style.left = vonA + "%";
+        balkenAktuell.style.width = Math.abs(pos(z.wert) - pos(0)) + "%";
+        spur.appendChild(balkenAktuell);
+
+        if (z.vorher !== null && z.vorher !== undefined) {
+          var balkenVorher = el("span", "aufschl-balken aufschl-balken-vorher" + (z.vorher < 0 ? " negativ" : ""));
+          var vonV = Math.min(pos(0), pos(z.vorher));
+          balkenVorher.style.left = vonV + "%";
+          balkenVorher.style.width = Math.abs(pos(z.vorher) - pos(0)) + "%";
+          spur.appendChild(balkenVorher);
+        }
+        zeile.appendChild(spur);
+
+        zeile.appendChild(el("span", "aufschl-zahl aufschl-wert", zahl(z.wert, "prozent")));
+        zeile.appendChild(el("span", "aufschl-zahl aufschl-diff",
+          (z.vorher === null || z.vorher === undefined) ? "–" : veraenderungText(z.wert - z.vorher, "prozent")));
+
+        zeile.addEventListener("pointerenter", function () { zeigeTipp(zeile, z); });
+        zeile.addEventListener("pointerleave", versteckeTipp);
+        zeile.addEventListener("pointerdown", function () { zeigeTipp(zeile, z); });
+        liste.appendChild(zeile);
+      });
+
+      ziel.appendChild(liste);
+
+      var legende = el("div", "legende");
+      var e1 = el("span", "legende-eintrag");
+      var s1 = el("span", "legende-strich"); s1.style.background = "var(--serie-1)";
+      e1.appendChild(s1); e1.appendChild(el("span", null, datumText(aktMonat.d, "monat")));
+      legende.appendChild(e1);
+      if (vorMonat) {
+        var e2 = el("span", "legende-eintrag");
+        var s2 = el("span", "legende-strich"); s2.style.background = "var(--serie-2)";
+        e2.appendChild(s2); e2.appendChild(el("span", null, "Vormonat (" + datumText(vorMonat.d, "monat") + ")"));
+        legende.appendChild(e2);
+      }
+      ziel.appendChild(legende);
+
+      var tipp = el("div", "tooltip");
+      tipp.style.display = "none";
+      ziel.appendChild(tipp);
+
+      function zeigeTipp(zeile, z) {
+        tipp.innerHTML = "";
+        tipp.appendChild(el("div", "tooltip-datum", z.name + " · " + datumText(aktMonat.d, "monat")));
+        var z1 = el("div", "tooltip-zeile");
+        z1.appendChild(el("span", "tooltip-wert", zahl(z.wert, "prozent") + " %"));
+        z1.appendChild(el("span", "tooltip-name", "aktuell"));
+        tipp.appendChild(z1);
+        if (z.vorher !== null && z.vorher !== undefined) {
+          var z2 = el("div", "tooltip-zeile");
+          z2.appendChild(el("span", "tooltip-wert", zahl(z.vorher, "prozent") + " %"));
+          z2.appendChild(el("span", "tooltip-name", "Vormonat"));
+          tipp.appendChild(z2);
+        }
+        tipp.style.display = "block";
+        tipp.style.top = (zeile.offsetTop + zeile.offsetHeight + 4) + "px";
+        tipp.style.left = Math.max(0, ziel.clientWidth - tipp.offsetWidth) / 2 + "px";
+      }
+      function versteckeTipp() { tipp.style.display = "none"; }
+    }
+
+    render();
+  }
+
   /* --- Detailansicht ----------------------------------------------------- */
 
   function zeichneAlles() {
@@ -829,17 +1027,63 @@
     baueTabelle(k, punkte, zweit);
   }
 
+  // wert: entweder ein Text (String/Zahl) oder ein DOM-Knoten (Element bzw.
+  // DocumentFragment) - letzteres fuer Kennwerte, die farbige Teilstuecke
+  // brauchen (z.B. PMI-Einfaerbung, farbige Trend-Differenz).
   function kennwert(titel, wert) {
     var box = el("div", "kennwert");
     box.appendChild(el("div", "kennwert-titel", titel));
-    box.appendChild(el("div", "kennwert-wert", wert));
+    var wertBox = el("div", "kennwert-wert");
+    if (wert !== null && wert !== undefined && wert.nodeType) {
+      wertBox.appendChild(wert);
+    } else {
+      wertBox.textContent = wert;
+    }
+    box.appendChild(wertBox);
     return box;
+  }
+
+  // Zieldatum = Datum des letzten Punkts minus n Kalendermonate.
+  function zieldatum(iso, n) {
+    var d = new Date(iso + "T00:00:00");
+    d.setMonth(d.getMonth() - n);
+    return d;
+  }
+
+  // Juengster Punkt, dessen Datum <= Zieldatum ist (von hinten gesucht).
+  // Liefert null, wenn kein solcher Punkt existiert oder er der letzte
+  // Punkt selbst waere (kein echter Unterschied, z.B. Quartalsreihen).
+  function trendVergleichspunkt(punkte, n) {
+    var letzterIdx = punkte.length - 1;
+    var ziel = zieldatum(punkte[letzterIdx].d, n);
+    for (var i = letzterIdx; i >= 0; i--) {
+      if (new Date(punkte[i].d + "T00:00:00") <= ziel) {
+        return i === letzterIdx ? null : punkte[i];
+      }
+    }
+    return null;
+  }
+
+  // Baut den Wert-Teil eines 1/3/6-Monats-Trend-Kennwerts: aktueller Wert,
+  // Vergleichswert mit Datum, Differenz farbig nach Vorzeichen (nicht nach
+  // k.richtung - siehe vorzeichenKlasse).
+  function trendKennwertInhalt(k, letzter, punkt, art) {
+    var einheit = einheitVon(k) ? " " + einheitVon(k) : "";
+    var frag = document.createDocumentFragment();
+    frag.appendChild(document.createTextNode(
+      zahl(letzter.v, k.format) + einheit + " · " + zahl(punkt.v, k.format) + einheit +
+      " (" + datumText(punkt.d, art) + ") "));
+    var diff = letzter.v - punkt.v;
+    frag.appendChild(el("span", vorzeichenKlasse(gerundet(diff, k.format)),
+      veraenderungText(diff, k.format) + einheit));
+    return frag;
   }
 
   function oeffneDetail(k) {
     aktuelleKachel = k;
     aktuellerZeitraum = "alle";
     tabelleSichtbar = false;
+    blsMonatsIndex = 0;
 
     var r = reihe(k);
     var punkte = punkteVon(k);
@@ -858,8 +1102,14 @@
     if (punkte.length >= 2) {
       var letzter = punkte[punkte.length - 1];
       var einheit = einheitVon(k) ? " " + einheitVon(k) : "";
-      kw.appendChild(kennwert("Aktuell", zahl(letzter.v, k.format) + einheit));
-      kw.appendChild(kennwert("Berichtsstand", datumText(letzter.d, art)));
+      if (k.pmiFarbe) {
+        var aktuellFrag = document.createDocumentFragment();
+        aktuellFrag.appendChild(el("span", pmiKlasse(letzter.v), zahl(letzter.v, k.format)));
+        aktuellFrag.appendChild(document.createTextNode(einheit));
+        kw.appendChild(kennwert("Aktuell", aktuellFrag));
+      } else {
+        kw.appendChild(kennwert("Aktuell", zahl(letzter.v, k.format) + einheit));
+      }
 
       var stufe = stufeText(k, letzter.v);
       if (stufe) { kw.appendChild(kennwert("Einstufung", stufe)); }
@@ -877,30 +1127,17 @@
         }
       }
 
-      var schritt = k.vergleich || 1;
-      if (k.vergleichArt === "vorwert") {
-        kw.appendChild(kennwert(k.vergleichName,
-          zahl(punkte[punkte.length - 2].v, k.format) + einheit));
-      } else if (punkte.length > schritt) {
-        var diff = letzter.v - punkte[punkte.length - 1 - schritt].v;
-        kw.appendChild(kennwert("Ggü. " + (k.vergleichName || "Vorperiode"),
-          veraenderungText(diff, k.format) + einheit));
-      }
-
-      // Trend ueber ein festes Fenster, z.B. die 8 Wochen aus dem Trading Plan
-      if (k.trendFenster && punkte.length > k.trendFenster) {
-        var alt = punkte[punkte.length - 1 - k.trendFenster].v;
-        var richtungText = letzter.v > alt ? "steigend" : letzter.v < alt ? "fallend" : "seitwärts";
-        var fensterName = art === "woche" ? " Wochen" : art === "quartal" ? " Quartale" : " Monate";
-        kw.appendChild(kennwert("Trend " + k.trendFenster + fensterName, richtungText));
-      }
-
-      // Spanne nur bei echter Historie, Startjahr aus den Daten statt fest "2015"
-      if (hatHistorie(punkte)) {
-        var werte = punkte.map(function (p) { return p.v; });
-        kw.appendChild(kennwert("Spanne seit " + punkte[0].d.slice(0, 4),
-          zahl(Math.min.apply(null, werte), k.format) + " – " + zahl(Math.max.apply(null, werte), k.format)));
-      }
+      // 1/3/6-Monats-Trend: Vergleichspunkt ueber das Datum gesucht, nicht
+      // ueber feste Indexschritte, damit das unabhaengig von der
+      // Datenfrequenz (taeglich/woechentlich/monatlich/quartalsweise)
+      // funktioniert. Fenster ohne echten Unterschied (z.B. Quartalsreihen)
+      // werden ausgelassen. Ersetzt die frueheren Kennwerte
+      // "Berichtsstand"/"Ggü. Vorperiode"/"Vormonat X"/"Spanne seit JJJJ".
+      [1, 3, 6].forEach(function (n) {
+        var punkt = trendVergleichspunkt(punkte, n);
+        if (!punkt) { return; }
+        kw.appendChild(kennwert(n + "-Monats-Trend", trendKennwertInhalt(k, letzter, punkt, art)));
+      });
     }
 
     // Zeitraumknoepfe
@@ -947,6 +1184,7 @@
     document.body.style.overflow = "hidden";
     zeichneAlles();
     baueAufschluesselung(k);
+    baueAufschluesselungBLS(k);
     document.getElementById("schliessen").focus();
   }
 

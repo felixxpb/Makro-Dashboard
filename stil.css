@@ -226,6 +226,13 @@ main { max-width: 1180px; margin: 0 auto; }
 .delta-schlecht { color: var(--schlecht); }
 .delta-neutral  { color: var(--text-sekundaer); }
 
+/* PMI-Einstufungsfarbe (bewusste Ausnahme von "Zahlen tragen nie die
+   Seriennfarbe", siehe README Abschnitt 6): ISM-/PMI-Diffusionsindizes sind
+   um 50 zentriert, ueber 50 = Expansion. Betrifft nur Kacheln mit
+   k.pmiFarbe = true. */
+.pmi-gut      { color: var(--gut); }
+.pmi-schlecht { color: var(--schlecht); }
+
 .kachel-fuss {
   display: flex;
   align-items: center;
@@ -655,6 +662,51 @@ td.zahl { text-align: right; }
   border-radius: 0 4px 4px 0;
 }
 .aufschl-balken.negativ { border-radius: 4px 0 0 4px; }
+
+/* BLS-CPI-Kategorien: Monats-Navigation (zweiter, unabhaengiger Mechanismus
+   neben der bestehenden Kategorie-Aufschluesselung, siehe motor.js
+   baueAufschluesselungBLS) */
+.aufschl-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 14px;
+}
+.aufschl-pfeil {
+  background: none;
+  border: 1px solid var(--rand);
+  border-radius: 7px;
+  padding: 5px 11px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--text-sekundaer);
+  cursor: pointer;
+}
+.aufschl-pfeil:hover:not(:disabled) { color: var(--text-primaer); border-color: var(--achse); }
+.aufschl-pfeil:disabled { opacity: .4; cursor: default; }
+.aufschl-nav-label {
+  min-width: 11ch;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Zwei Balken je Zeile: aktueller Monat (Hauptfarbe) und Vormonat (zweite
+   Farbe, etwas schmaler und leicht transparent - "eine Serienfarbe pro
+   Graph, zweite Farbe nur bei zwei Reihen" aus README Abschnitt 6) */
+.aufschl-spur-doppel { height: 18px; }
+.aufschl-balken-aktuell {
+  top: 0;
+  height: 8px;
+  background: var(--serie-1);
+}
+.aufschl-balken-vorher {
+  top: 10px;
+  height: 8px;
+  background: var(--serie-2);
+  opacity: .75;
+}
 
 .dialog-fuss {
   display: flex;
