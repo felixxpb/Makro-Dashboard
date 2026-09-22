@@ -218,7 +218,7 @@ window.KACHELN = [
     stufe: { grenze: 100, ueber: "expansiv", unter: "kühlt ab" },
     vergleich: 1, vergleichName: "Vormonat",
     trendFenster: 3
-  } {
+  }, {
   schluessel: "ISM_PMI_MFG",
   quelle: "wachstum",
   gruppe: "leading",
