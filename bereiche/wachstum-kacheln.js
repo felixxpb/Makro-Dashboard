@@ -242,5 +242,29 @@ window.KACHELN = [
   vergleich: 1,
   vergleichName: "Vormonat",
   trendFenster: 3,
-}
+}, {
+    schluessel: "ISM_PMI_MFG",
+    quelle: "wachstum",
+    gruppe: "leading",
+    titel: "ISM Manufacturing PMI",
+    untertitel: "Einkaufsmanagerindex Industrie (USA)",
+    frage: "Expandiert oder kontrahiert die US-Industrie?",
+    einordnung: "Über 50 = Expansion, unter 50 = Kontraktion.",
+    format: "punkte",
+    einheitFest: "Index",
+    richtung: "neutral",
+    schwellen: [{ wert: 50, text: "50 Baseline" }],
+    stufen: [
+      { ueber: 54.5, text: "über 54,5, Expansion" },
+      { ab: 50.5, text: "50,5 bis 54,5, Normalbereich" },
+      { text: "unter 50,5, Kontraktion" },
+    ],
+    serien: [
+      { unter: 47, anzahl: 3, text: "anhaltende Kontraktion" },
+      { unter: 48, anzahl: 6, text: "starkes Warnsignal" },
+    ],
+    vergleich: 1,
+    vergleichName: "Vormonat",
+    trendFenster: 3,
+  }
 ];
