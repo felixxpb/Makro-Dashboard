@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="de" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tracking – Kennzahlen</title>
+<link rel="stylesheet" href="stil.css">
+<style>
+  .steuerzeile { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 18px 0 4px; }
+  .steuerzeile select, .steuerzeile button {
+    font: inherit; padding: 7px 12px; border-radius: 8px;
+    border: 1px solid var(--rand); background: var(--flaeche); color: var(--text-primaer);
+    cursor: pointer;
+  }
+  .steuerzeile button[aria-pressed="true"] { border-color: var(--achse); font-weight: 600; }
+  .kachel-platzhalter { color: var(--text-stumm); font-size: 13px; }
+  .stand-hinweis { font-size: 12px; color: var(--text-stumm); margin: 4px 0 0; }
+</style>
+</head>
+<body>
+
+<header class="kopf">
+  <div class="kopf-zeile">
+    <div>
+      <div class="kopf-pfad"><a href="index.html">Dashboard</a> / Tracking</div>
+      <h1>Tracking – Kennzahlen</h1>
+    </div>
+    <div class="kopf-knopfleiste">
+      <button id="themaSchalter" class="thema-schalter" type="button" aria-label="Hell- oder Dunkelmodus umschalten">
+        <span class="thema-hell">Hell</span><span class="thema-dunkel">Dunkel</span>
+      </button>
+    </div>
+  </div>
+  <p class="kopf-frage">Reine Trading-Kennzahlen aus den FTMO-Exports. Keine Journal-Inhalte – die liegen im Vault (Ordner 06_Tracking).</p>
+</header>
+
+<main>
+
+  <div class="steuerzeile">
+    <select id="accountAuswahl" aria-label="Account auswaehlen"></select>
+    <button type="button" data-stufe="monthly" aria-pressed="true">Monatlich</button>
+    <button type="button" data-stufe="quarterly" aria-pressed="false">Quartalsweise</button>
+    <button type="button" data-stufe="yearly" aria-pressed="false">Jaehrlich</button>
+    <button type="button" data-stufe="total" aria-pressed="false">Gesamt</button>
+  </div>
+
+  <div class="steuerzeile" id="periodenNavigation">
+    <button type="button" id="periodeZurueck" aria-label="Vorherige Periode">◀</button>
+    <span id="periodeLabel" style="min-width: 90px; text-align: center; font-weight: 600;"></span>
+    <button type="button" id="periodeVor" aria-label="Naechste Periode">▶</button>
+  </div>
+  <p class="stand-hinweis" id="standHinweis"></p>
+
+  <div class="gruppe">
+    <h2>Performance</h2>
+    <div class="kachel-raster" id="gruppe-performance"></div>
+  </div>
+
+  <div class="gruppe">
+    <h2>Benchmark &amp; Psychologie</h2>
+    <div class="kachel-raster" id="gruppe-benchmark"></div>
+  </div>
+
+  <div class="gruppe">
+    <h2>Risiko</h2>
+    <div class="kachel-raster" id="gruppe-risiko"></div>
+  </div>
+
+  <div class="gruppe">
+    <h2>Trade-Effizienz</h2>
+    <div class="kachel-raster" id="gruppe-effizienz"></div>
+  </div>
+
+  <div class="gruppe">
+    <h2>Zeit &amp; Verhalten</h2>
+    <div class="kachel-raster" id="gruppe-zeit"></div>
+  </div>
+
+</main>
+
+<footer class="fuss">
+  <span>Tracking · Teil des FIST-Analyseprozesses</span>
+  <span class="fuss-trenner">·</span>
+  <span>Formel-Referenz: Trading Brain/06_Tracking/01_Kennzahlen/Formel_Definitionen.md</span>
+</footer>
+
+<script src="daten/tracking.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  // --- Hell/Dunkel-Umschalter (gleiches Muster wie index.html) ---
+  var schalter = document.getElementById("themaSchalter");
+  var gespeichert = null;
+  try { gespeichert = localStorage.getItem("dashboard-thema"); } catch (e) { }
+  if (gespeichert) { document.documentElement.setAttribute("data-theme", gespeichert); }
+  schalter.addEventListener("click", function () {
+    var neu = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", neu);
+    try { localStorage.setItem("dashboard-thema", neu); } catch (e) { }
+  });
+
+  var daten = window.TRACKING_DATEN;
+  if (!daten) {
+    document.querySelector("main").innerHTML = "<p class='kachel-platzhalter'>Keine Kennzahlen gefunden. Erst " +
+      "06_Tracking/01_Kennzahlen/Berechnen-Kennzahlen.ps1 ausfuehren.</p>";
+    return;
+  }
+
+  // --- Account-Auswahl fuellen ---
+  var auswahl = document.getElementById("accountAuswahl");
+  var accountNamen = { FTMO_100k: "FTMO 100k", FTMO_10k: "FTMO 10k", AXI_500: "AXI 500", portfolio: "Portfolio-Gesamt" };
+  var verfuegbareAccounts = Object.keys(daten.accounts || {});
+  verfuegbareAccounts.forEach(function (id) {
+    var opt = document.createElement("option");
+    opt.value = id;
+    opt.textContent = accountNamen[id] || id;
+    auswahl.appendChild(opt);
+  });
+  if (daten.portfolio) {
+    var opt2 = document.createElement("option");
+    opt2.value = "portfolio";
+    opt2.textContent = "Portfolio-Gesamt (alle Accounts)";
+    auswahl.appendChild(opt2);
+  }
+
+  var aktuelleStufe = "monthly";
+
+  // --- Kennzahlen-Definition: Feld im Datensatz, Einheit, Format, hoehere-ist-besser ---
+  var KENNZAHLEN = {
+    performance: [
+      { feld: "gesamtrendite", titel: "Gesamtrendite", format: "prozent", gut: "hoch" },
+      { feld: "annualisierteRendite", titel: "Annualisierte Rendite", format: "prozent", gut: "hoch" }
+    ],
+    benchmark: [
+      { feld: "alpha", titel: "Alpha", format: "prozent", gut: "hoch" },
+      { feld: "beta", titel: "Beta (vs. S&P 500)", format: "zahl", gut: null }
+    ],
+    risiko: [
+      { feld: "maxDrawdown", titel: "Max. Drawdown", format: "prozent", gut: "niedrig" },
+      { feld: "recoveryFaktor", titel: "Recovery Faktor", format: "zahl", gut: "hoch" },
+      { feld: "sharpe", titel: "Sharpe Ratio", format: "zahl", gut: "hoch" },
+      { feld: "sortino", titel: "Sortino Ratio", format: "zahl", gut: "hoch" },
+      { feld: "profitFaktor", titel: "Profit Faktor", format: "zahl", gut: "hoch" },
+      { feld: "var95", titel: "Value at Risk (95%)", format: "prozent", gut: "niedrig" },
+      { feld: "cvar95", titel: "Conditional VaR", format: "prozent", gut: "niedrig" }
+    ],
+    effizienz: [
+      { feld: "winrate", titel: "Winrate", format: "prozent", gut: "hoch" },
+      { feld: "avgWin", titel: "Ø Win", format: "waehrung", gut: "hoch" },
+      { feld: "avgLoss", titel: "Ø Loss", format: "waehrung", gut: "hoch" },
+      { feld: "payoffRatio", titel: "Payoff Ratio", format: "zahl", gut: "hoch" },
+      { feld: "expectancy", titel: "Expectancy", format: "waehrung", gut: "hoch" }
+    ],
+    zeit: [
+      { feld: "avgDauerStunden", titel: "Ø Trade-Dauer", format: "stunden", gut: null },
+      { feld: "timeInMarket", titel: "Time in Market", format: "prozent", gut: null },
+      { feld: "overtradingIndex", titel: "Overtrading Index", format: "prozent", gut: "niedrig" },
+      { feld: "disziplinIndex", titel: "Disziplin Index", format: "prozent", gut: "niedrig", zusatzFeld: "disziplinOhneSL" }
+    ]
+  };
+
+  function formatWert(wert, format) {
+    if (wert === null || wert === undefined) { return null; }
+    if (format === "prozent") { return (wert * 100).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " %"; }
+    if (format === "waehrung") { return wert.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+    if (format === "stunden") { return wert.toLocaleString("de-DE", { maximumFractionDigits: 1 }) + " h"; }
+    return wert.toLocaleString("de-DE", { maximumFractionDigits: 4 });
+  }
+
+  function deltaKlasse(aktuell, vorher, gut) {
+    if (aktuell === null || vorher === null || aktuell === undefined || vorher === undefined || gut === null) { return "delta-neutral"; }
+    var besser = aktuell > vorher;
+    if (gut === "niedrig") { besser = aktuell < vorher; }
+    if (aktuell === vorher) { return "delta-neutral"; }
+    return besser ? "delta-gut" : "delta-schlecht";
+  }
+
+  function baueKachel(def, periodenListe, periodenIndex) {
+    var kachel = document.createElement("div");
+    kachel.className = "kachel";
+    kachel.style.cursor = "default";
+
+    var titel = document.createElement("div");
+    titel.className = "kachel-titel";
+    titel.textContent = def.titel;
+    kachel.appendChild(titel);
+
+    if (!periodenListe || periodenListe.length === 0) {
+      var platzhalter = document.createElement("div");
+      platzhalter.className = "kachel-platzhalter";
+      platzhalter.textContent = "keine Daten";
+      kachel.appendChild(platzhalter);
+      return kachel;
+    }
+
+    var aktuellerEintrag = periodenListe[periodenIndex];
+    var vorherigerEintrag = periodenIndex > 0 ? periodenListe[periodenIndex - 1] : null;
+    var aktuellerWert = aktuellerEintrag ? aktuellerEintrag[def.feld] : null;
+    var vorherWert = vorherigerEintrag ? vorherigerEintrag[def.feld] : null;
+
+    var wertzeile = document.createElement("div");
+    wertzeile.className = "kachel-wertzeile";
+    var wertSpan = document.createElement("span");
+    wertSpan.className = "kachel-wert";
+    wertSpan.textContent = formatWert(aktuellerWert, def.format) || "–";
+    wertzeile.appendChild(wertSpan);
+
+    if (vorherigerEintrag && vorherWert !== null && vorherWert !== undefined && aktuellerWert !== null) {
+      var deltaSpan = document.createElement("span");
+      deltaSpan.className = "delta " + deltaKlasse(aktuellerWert, vorherWert, def.gut);
+      var diff = aktuellerWert - vorherWert;
+      var vorzeichen = diff >= 0 ? "+" : "";
+      deltaSpan.textContent = vorzeichen + formatWert(diff, def.format);
+      wertzeile.appendChild(deltaSpan);
+    }
+    kachel.appendChild(wertzeile);
+
+    var fuss = document.createElement("div");
+    fuss.className = "kachel-fuss";
+    var fussRechts = aktuellerEintrag.anzahlTrades + " Trades";
+    if (def.zusatzFeld && aktuellerEintrag[def.zusatzFeld]) {
+      fussRechts += " · " + aktuellerEintrag[def.zusatzFeld] + "x ohne SL";
+    }
+    fuss.innerHTML = "<span>" + aktuellerEintrag.periode + "</span><span>" + fussRechts + "</span>";
+    kachel.appendChild(fuss);
+
+    if (aktuellerWert === null || aktuellerWert === undefined) {
+      wertSpan.textContent = "–";
+    }
+
+    return kachel;
+  }
+
+  // periodenIndex je Account+Stufe merken, damit ein Stufenwechsel nicht die
+  // Navigationsposition eines anderen Reiters verwirft
+  var periodenIndexSpeicher = {};
+
+  function aktuelleDatensatzListe() {
+    var accountId = auswahl.value;
+    var datensatz = accountId === "portfolio" ? daten.portfolio : (daten.accounts ? daten.accounts[accountId] : null);
+    if (!datensatz) { return { datensatz: null, periodenListe: [] }; }
+    return { datensatz: datensatz, periodenListe: datensatz[aktuelleStufe] || [] };
+  }
+
+  function speicherSchluessel() {
+    return auswahl.value + "|" + aktuelleStufe;
+  }
+
+  function render() {
+    var standText = "Berechnet am " + (daten.berechnetAm || "unbekannt");
+    document.getElementById("standHinweis").textContent = standText;
+
+    var stand = aktuelleDatensatzListe();
+    var periodenListe = stand.periodenListe;
+
+    if (!stand.datensatz) {
+      ["performance", "benchmark", "risiko", "effizienz", "zeit"].forEach(function (g) {
+        document.getElementById("gruppe-" + g).innerHTML = "<p class='kachel-platzhalter'>Keine Daten fuer diesen Account.</p>";
+      });
+      document.getElementById("periodenNavigation").style.visibility = "hidden";
+      return;
+    }
+
+    var schluessel = speicherSchluessel();
+    if (!(schluessel in periodenIndexSpeicher)) {
+      periodenIndexSpeicher[schluessel] = periodenListe.length - 1;
+    }
+    var periodenIndex = Math.max(0, Math.min(periodenIndexSpeicher[schluessel], periodenListe.length - 1));
+    periodenIndexSpeicher[schluessel] = periodenIndex;
+
+    Object.keys(KENNZAHLEN).forEach(function (gruppenName) {
+      var container = document.getElementById("gruppe-" + gruppenName);
+      container.innerHTML = "";
+      KENNZAHLEN[gruppenName].forEach(function (def) {
+        container.appendChild(baueKachel(def, periodenListe, periodenIndex));
+      });
+    });
+
+    // Navigation aktualisieren
+    var nav = document.getElementById("periodenNavigation");
+    var label = document.getElementById("periodeLabel");
+    var btnZurueck = document.getElementById("periodeZurueck");
+    var btnVor = document.getElementById("periodeVor");
+    if (aktuelleStufe === "total" || periodenListe.length <= 1) {
+      nav.style.visibility = "hidden";
+    } else {
+      nav.style.visibility = "visible";
+      label.textContent = periodenListe[periodenIndex] ? periodenListe[periodenIndex].periode : "–";
+      btnZurueck.disabled = periodenIndex <= 0;
+      btnVor.disabled = periodenIndex >= periodenListe.length - 1;
+    }
+  }
+
+  document.getElementById("periodeZurueck").addEventListener("click", function () {
+    var schluessel = speicherSchluessel();
+    if (periodenIndexSpeicher[schluessel] > 0) {
+      periodenIndexSpeicher[schluessel] -= 1;
+      render();
+    }
+  });
+  document.getElementById("periodeVor").addEventListener("click", function () {
+    var stand = aktuelleDatensatzListe();
+    var schluessel = speicherSchluessel();
+    if (periodenIndexSpeicher[schluessel] < stand.periodenListe.length - 1) {
+      periodenIndexSpeicher[schluessel] += 1;
+      render();
+    }
+  });
+
+  auswahl.addEventListener("change", render);
+  document.querySelectorAll(".steuerzeile button[data-stufe]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      document.querySelectorAll(".steuerzeile button[data-stufe]").forEach(function (b) { b.setAttribute("aria-pressed", "false"); });
+      btn.setAttribute("aria-pressed", "true");
+      aktuelleStufe = btn.getAttribute("data-stufe");
+      render();
+    });
+  });
+
+  if (auswahl.options.length > 0) {
+    render();
+  } else {
+    document.querySelector("main").innerHTML = "<p class='kachel-platzhalter'>Noch keine Accounts mit Rohdaten gefunden.</p>";
+  }
+})();
+</script>
+</body>
+</html>
