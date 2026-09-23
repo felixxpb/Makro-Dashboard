@@ -1274,7 +1274,10 @@
     stufeText: stufeText,
     einheitVon: einheitVon,
     datumText: datumText,
-    frequenzArt: frequenzArt
+    frequenzArt: frequenzArt,
+    zieldatum: zieldatum,
+    trendVergleichspunkt: trendVergleichspunkt,
+    vorzeichenKlasse: vorzeichenKlasse
   };
 
 })();

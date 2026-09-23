@@ -218,5 +218,5 @@ window.KACHELN = [
     stufe: { grenze: 100, ueber: "expansiv", unter: "kühlt ab" },
     vergleich: 1, vergleichName: "Vormonat",
     trendFenster: 3
-  }];
- 
+  }
+];
