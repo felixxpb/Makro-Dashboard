@@ -48,7 +48,9 @@ window.KACHELN = [
     vergleichArt: "vorwert", vergleichName: "Vormonat"
   },
   {
-    schluessel: "AHE", quelle: "web", gruppe: "harte",
+    // Quelle seit 2026-09-24 FRED CES0500000003 statt des TradingEconomics-
+    // Seitenabrufs: gleiche Reihe, aber volle Historie und stabiler API-Abruf.
+    schluessel: "CES0500000003", quelle: "fred", gruppe: "harte",
     titel: "Average Hourly Earnings",
     untertitel: "Durchschnittlicher Stundenlohn, Veränderung zum Vormonat",
     frage: "Wie stark steigen die Löhne?",
@@ -58,7 +60,15 @@ window.KACHELN = [
     // Der Wert ist schon eine Veraenderung (MoM %). Daneben steht deshalb der
     // Vormonatswert, nicht die Differenz zweier Differenzen (gleiches Muster
     // wie bei Nonfarm Payrolls).
-    vergleichArt: "vorwert", vergleichName: "Vormonat"
+    vergleichArt: "vorwert", vergleichName: "Vormonat",
+    hauptName: "MoM (Vormonat)",
+    // Zweite Linie: YoY, gerechnet aus der Dollar-Niveaureihe derselben
+    // FRED-Serie. Beide Linien sind Prozent, also eine Wertachse (gleiches
+    // Muster wie QoQ/YoY beim Employment Cost Index).
+    zweitreihe: {
+      schluessel: "CES0500000003_LVL", ableitung: "yoy", ableitungSchritt: 12,
+      name: "YoY (Vorjahr)", kennwert: "YoY aktuell", luecken: true
+    }
   },
 
   {
@@ -137,6 +147,20 @@ window.KACHELN = [
     untertitel: "Angekündigte Entlassungen",
     frage: "Haben Firmen vor, Personal zu entlassen?",
     einordnung: "Misst das Erdbeben, bevor es passiert: Unternehmen kündigen Entlassungen an, lange bevor sie in Claims und U-Rate auftauchen.",
-    format: "ganz", richtung: "hoch_schlecht"
+    format: "ganz", richtung: "hoch_schlecht",
+    vergleich: 1, vergleichName: "Vormonat",
+    hauptName: "Ankündigungen",
+    // Zweite Linie: derselbe Wert um zwoelf Monate versetzt. Bewusst NICHT die
+    // YoY-Prozentreihe - die liefe in einer voellig anderen Groessenordnung als
+    // die Stueckzahlen und waere auf der gemeinsamen Wertachse nicht ablesbar
+    // (Gestaltungsregel: nie zwei Wertachsen in einem Graph). Die exakte
+    // Prozentzahl steht stattdessen als Kennwert unter dem Graph.
+    zweitreihe: {
+      schluessel: "CHALLENGER", ableitung: "verschoben", ableitungSchritt: 12,
+      name: "Vorjahresmonat", luecken: true
+    },
+    zusatzKennwerte: [
+      { titel: "YoY aktuell", ableitung: "yoy", ableitungSchritt: 12, format: "prozent" }
+    ]
   }
 ];

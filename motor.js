@@ -71,6 +71,19 @@
       }
       return y;
     }
+    if (k.ableitung === "verschoben") {
+      // Dieselbe Reihe, um N Perioden nach hinten versetzt: zu jedem Zeitpunkt
+      // steht der Wert von vor N Perioden. Gedacht als zweite Linie fuer den
+      // Vorjahresvergleich bei Reihen, deren YoY-Prozentwert eine voellig
+      // andere Groessenordnung haette als die Hauptlinie (z.B. Challenger Job
+      // Cuts: Stueckzahlen gegen Prozent). So bleibt es bei einer Wertachse.
+      var schrittV = k.ableitungSchritt || 12;
+      var vs = [];
+      for (var m = schrittV; m < p.length; m++) {
+        vs.push({ d: p[m].d, v: p[m - schrittV].v });
+      }
+      return vs;
+    }
     return p;
   }
 
@@ -431,7 +444,13 @@
     var art = frequenzArt(k);
 
     var alle = punkte.map(function (p) { return p.v; });
-    if (zweit) { alle = alle.concat(zweit.punkte.map(function (p) { return p.v; })); }
+    // Leerstellen der zweiten Reihe muessen draussen bleiben, sonst wuerde
+    // null in der Skalenrechnung wie eine Null wirken und die Achse verzerren.
+    if (zweit) {
+      zweit.punkte.forEach(function (p) {
+        if (p.v !== null && p.v !== undefined && !isNaN(p.v)) { alle.push(p.v); }
+      });
+    }
     if (k.schwellen) {
       k.schwellen.forEach(function (s) { alle.push(s.wert); });
     }
@@ -507,15 +526,24 @@
       svg.appendChild(tx);
     }
 
+    // Leerstellen (v === null) unterbrechen die Linie, statt sie auf die
+    // Nulllinie zu ziehen. Noetig fuer zweite Reihen, die spaeter einsetzen
+    // als die Hauptlinie (z.B. Vorjahresvergleich im ersten Jahr).
     function linienPfad(daten, farbe, flaeche) {
-      var d = "";
+      var d = "", offen = false, ersterIdx = -1, letzterIdx = -1;
       for (var i = 0; i < daten.length; i++) {
-        d += (i === 0 ? "M" : "L") + x(i, daten.length).toFixed(1) + " " + y(daten[i].v).toFixed(1);
+        var v = daten[i].v;
+        if (v === null || v === undefined || isNaN(v)) { offen = false; continue; }
+        d += (offen ? "L" : "M") + x(i, daten.length).toFixed(1) + " " + y(v).toFixed(1);
+        offen = true;
+        if (ersterIdx < 0) { ersterIdx = i; }
+        letzterIdx = i;
       }
+      if (!d) { return; }
       if (flaeche) {
         var f = document.createElementNS(NS, "path");
-        f.setAttribute("d", d + "L" + x(daten.length - 1, daten.length).toFixed(1) + " " + (randO + plotH) +
-                            "L" + randL + " " + (randO + plotH) + "Z");
+        f.setAttribute("d", d + "L" + x(letzterIdx, daten.length).toFixed(1) + " " + (randO + plotH) +
+                            "L" + x(ersterIdx, daten.length).toFixed(1) + " " + (randO + plotH) + "Z");
         f.setAttribute("fill", farbe);
         f.setAttribute("opacity", "0.10");
         svg.appendChild(f);
@@ -592,11 +620,13 @@
       }
       zeile("var(--serie-1)", k.hauptName || k.titel, punkte[idx].v, einheitVon(k));
 
-      if (zweit && zweit.punkte[idx]) {
+      if (zweit && zweit.punkte[idx] && zweit.punkte[idx].v !== null && zweit.punkte[idx].v !== undefined) {
         marke2.setAttribute("cx", px.toFixed(1));
         marke2.setAttribute("cy", y(zweit.punkte[idx].v).toFixed(1));
         marke2.setAttribute("opacity", "1");
         zeile("var(--serie-2)", zweit.name, zweit.punkte[idx].v, zweit.einheit);
+      } else if (zweit) {
+        marke2.setAttribute("opacity", "0");
       }
 
       tooltip.style.display = "block";
@@ -1007,13 +1037,31 @@
     var punkte = gefiltert(alle, aktuellerZeitraum);
     var zweit = null;
 
-    // Zweite Linie: nur Zeitpunkte, die in beiden Reihen vorkommen
+    // Zweite Linie: standardmaessig nur Zeitpunkte, die in beiden Reihen
+    // vorkommen. Mit zweitreihe.luecken = true behaelt die Hauptlinie ihre
+    // volle Laenge und die zweite Linie setzt einfach spaeter ein - noetig,
+    // wenn die zweite Reihe systembedingt kuerzer ist (Vorjahresvergleich
+    // kann die ersten zwoelf Monate nicht abbilden) und das Kuerzen sonst
+    // echte Historie aus dem Graph werfen wuerde.
     var zk = zweitKonfig(k);
     if (zk) {
       var nachDatum = {};
+      var vorhandene = 0;
       punkteVon(zk).forEach(function (p) { nachDatum[p.d] = p.v; });
-      var gemeinsam = alle.filter(function (p) { return nachDatum[p.d] !== undefined; });
-      if (gemeinsam.length >= 2) {
+      alle.forEach(function (p) { if (nachDatum[p.d] !== undefined) { vorhandene++; } });
+
+      if (k.zweitreihe.luecken) {
+        if (vorhandene >= 2) {
+          zweit = {
+            punkte: punkte.map(function (p) {
+              return { d: p.d, v: nachDatum[p.d] !== undefined ? nachDatum[p.d] : null };
+            }),
+            name: k.zweitreihe.name,
+            einheit: einheitVon(zk)
+          };
+        }
+      } else if (vorhandene >= 2) {
+        var gemeinsam = alle.filter(function (p) { return nachDatum[p.d] !== undefined; });
         punkte = gefiltert(gemeinsam, aktuellerZeitraum);
         zweit = {
           punkte: punkte.map(function (p) { return { d: p.d, v: nachDatum[p.d] }; }),
@@ -1126,6 +1174,27 @@
             zahl(zp[zp.length - 1].v, k.format) + " " + einheitVon(zk)));
         }
       }
+
+      // Zusaetzliche abgeleitete Kennwerte, die NICHT als Linie im Graph
+      // stehen (z.B. YoY in Prozent bei einer Kachel, deren Hauptlinie
+      // Stueckzahlen zeigt). Konfiguration je Eintrag:
+      // { titel, schluessel?, quelle?, ableitung, ableitungSchritt?, format? }
+      // Fehlt schluessel/quelle, wird die Reihe der Kachel selbst genutzt.
+      (k.zusatzKennwerte || []).forEach(function (zusatz) {
+        var zkonf = {
+          quelle: zusatz.quelle || k.quelle,
+          schluessel: zusatz.schluessel || k.schluessel,
+          ableitung: zusatz.ableitung,
+          ableitungSchritt: zusatz.ableitungSchritt,
+          format: zusatz.format || k.format
+        };
+        var zpunkte = punkteVon(zkonf);
+        if (!zpunkte.length) { return; }
+        var einheitZusatz = einheitVon(zkonf);
+        kw.appendChild(kennwert(zusatz.titel,
+          zahl(zpunkte[zpunkte.length - 1].v, zkonf.format) +
+          (einheitZusatz ? " " + einheitZusatz : "")));
+      });
 
       // 1/3/6-Monats-Trend: Vergleichspunkt ueber das Datum gesucht, nicht
       // ueber feste Indexschritte, damit das unabhaengig von der
