@@ -1,18 +1,22 @@
 /* ===========================================================================
-   Konfiguration Regime
-   Grundlage: 02_Raw/03_Strategien/00_Mein_Trading_Plan.docx, Abschnitt
-   "ZB1! + Sentiment & Regime", sowie das Rohmaterial in
-   02_Raw/02_Informationen/02_Incentive/02_RegimeTheorie (Makro_Regime_Research.docx,
-   Regime Theorie Zusammenfassung.docx, MakroRegime.xlsx, Regime Berechnung
-   KOPIE.xlsx). Details und alle Entscheidungen: 03_Doku/Datenquellen_Regime.md.
+   Konfiguration Regime (Version 2, 2026-09-25)
+
+   Grundlage: Felix' Vorgabe vom 2026-09-25 (02_Raw/Regime.pptx) sowie das
+   Rohmaterial in 02_Raw/02_Informationen/02_Incentive/02_RegimeTheorie.
+   Details und alle Entscheidungen: 03_Doku/Datenquellen_Regime.md.
    Wird vor motor.js geladen.
 
-   Diese Kachel-Liste deckt nur die neun numerischen Zeitreihen ab (ZSK,
-   DXY/ZB1, vier Konjunktur-Spreads). Die drei Regime-Klassifikationen
-   (ZSK-Kurvenform, Makro-Regime, DXY/ZB1-Quadrant) und die historische
-   Referenztabelle sind keine gewoehnlichen Kacheln, sondern eigene
-   Abschnitte, die regime.html direkt aus window.REGIME_DATEN.klassifikation
-   und .referenz aufbaut (siehe Skript am Ende von regime.html).
+   Diese Datei deckt nur noch die vier Konjunkturzyklus-Fruehindikatoren ab.
+   Der gesamte obere Teil der Seite (ZSK-Spread-Chart mit Regime-Hintergrund,
+   US02Y- und US10Y-Chart, IPDA-Tabelle, die beiden Regime-Kaesten und die
+   drei Nachschlage-Dialoge) wird von regime-ansicht.js aufgebaut, ebenso die
+   historische Performance-Tabelle darunter.
+
+   Weggefallen gegenueber Version 1 (Entscheidung Felix, 2026-09-25):
+   - die drei ZSK-Kacheln (2Y, 10Y, Spread) - stehen jetzt als Charts oben
+   - DXY und ZB1 samt Quadranten-Klassifikation - ersatzlos gestrichen
+     ACHTUNG: DGS2, DGS10 und T10Y2Y bleiben in daten/regime.js erhalten,
+     weil zinsen-kacheln.js sie mit quelle "regime" weiterverwendet.
 
    Richtung durchgehend "neutral": keine Farbbewertung von Veraenderungen
    (CLAUDE.md Abschnitt 5).
@@ -23,62 +27,10 @@ window.QUELLEN = {
 };
 
 window.GRUPPEN = [
-  { id: "zsk", titel: "Zinsstrukturkurve (ZSK)", hinweis: "2Y-Rendite preist die Geldpolitik der FED ein, 10Y-Rendite preist Wachstums- und Inflationserwartungen ein. Der Spread zeigt die Kurvenform (Steepening/Flattening)." },
-  { id: "quadrant", titel: "DXY + ZB1 Quadrant", hinweis: "Marktregime aus DXY-Trend und ZB1-Trend (30Y-T-Bond-Future). Das Regime gibt laut Trading Plan das BIAS, der Chart den Entry." },
   { id: "konjunktur", titel: "Konjunkturzyklus-Frühindikatoren", hinweis: "Vier ETF-Ratios als Frühindikatoren fuer Risk-On/Risk-Off und den Konjunkturzyklus. Steigt der Spread, dominiert tendenziell Risk On." }
 ];
 
 window.KACHELN = [
-  /* --- Zinsstrukturkurve (ZSK) -------------------------------------------- */
-  {
-    schluessel: "DGS2", quelle: "regime", gruppe: "zsk",
-    titel: "2Y-Rendite",
-    untertitel: "2-jährige US-Staatsanleihe, preist die Geldpolitik der FED ein",
-    frage: "Was erwarten Anleger von der nächsten FED-Zinsentscheidung?",
-    einordnung: "Die 2Y-Rendite läuft laut Research vorlaufend zu den Leitzinsen der FED. Erwarten Anleger Zinserhöhungen, verkaufen sie Anleihen mit geringerer Rendite und die 2Y-Rendite steigt. Erwarten sie Zinssenkungen, kaufen sie Anleihen und die Rendite fällt.",
-    format: "faktor", einheitFest: "%", richtung: "neutral",
-    vergleich: 20, vergleichName: "vor 20 Handelstagen"
-  },
-  {
-    schluessel: "DGS10", quelle: "regime", gruppe: "zsk",
-    titel: "10Y-Rendite",
-    untertitel: "10-jährige US-Staatsanleihe, preist Wachstum und Inflation ein",
-    frage: "Was erwarten Anleger für Wachstum und Inflation?",
-    einordnung: "Steigende Wachstums- und Inflationserwartungen lassen laut Research die 10Y-Rendite steigen, fallende Erwartungen lassen sie fallen.",
-    format: "faktor", einheitFest: "%", richtung: "neutral",
-    vergleich: 20, vergleichName: "vor 20 Handelstagen"
-  },
-  {
-    schluessel: "T10Y2Y", quelle: "regime", gruppe: "zsk",
-    titel: "10Y-2Y-Spread",
-    untertitel: "Zinsstrukturkurve, Spread zwischen 10Y- und 2Y-Rendite",
-    frage: "Wie steil oder flach ist die Zinsstrukturkurve, und ist sie invertiert?",
-    einordnung: "Steigt der Spread, wird die Kurve steiler (Steepening). Fällt er, flacht sie ab (Flattening). Unter 0 ist die Kurve invertiert (kurzfristige Renditen höher als langfristige), historisch ein Rezessionssignal. Die genaue Kurvenform (Bull/Bear Steepener/Flattener) steht als eigener Abschnitt unten auf der Seite.",
-    format: "faktor", einheitFest: "%-Punkte", richtung: "neutral",
-    schwellen: [{ wert: 0, text: "Invertiert" }],
-    vergleich: 20, vergleichName: "vor 20 Handelstagen"
-  },
-
-  /* --- DXY + ZB1 Quadrant -------------------------------------------------- */
-  {
-    schluessel: "DXY", quelle: "regime", gruppe: "quadrant",
-    titel: "DXY",
-    untertitel: "ICE US Dollar Index",
-    frage: "Wie stark oder schwach steht der USD gegenüber einem Währungskorb da?",
-    einordnung: "Bezugsgröße für die USD-Stärke im Quadranten-Regime (Kachel unten: DXY-Trend kombiniert mit ZB1-Trend).",
-    format: "faktor", einheitFest: "Punkte", richtung: "neutral",
-    vergleich: 20, vergleichName: "vor 20 Handelstagen"
-  },
-  {
-    schluessel: "ZB1", quelle: "regime", gruppe: "quadrant",
-    titel: "ZB1 (30Y T-Bond-Future)",
-    untertitel: "Naechster Kontrakt, Preis (nicht Rendite)",
-    frage: "Steigen oder fallen die Bondpreise, und was sagt das über die Renditen?",
-    einordnung: "ZB1 steigt = Bondpreise steigen = Renditen fallen. ZB1 fällt = Bondpreise fallen = Renditen steigen. Zweite Bezugsgröße für den Quadranten unten.",
-    format: "faktor", einheitFest: "Punkte", richtung: "neutral",
-    vergleich: 20, vergleichName: "vor 20 Handelstagen"
-  },
-
   /* --- Konjunkturzyklus-Fruehindikatoren ----------------------------------- */
   {
     schluessel: "XLY_XLP", quelle: "regime", gruppe: "konjunktur",

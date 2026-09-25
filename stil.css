@@ -721,33 +721,339 @@ td.zahl { text-align: right; }
   color: var(--text-stumm);
 }
 
-/* Regime-Klassifikationskarten (Bereich Regime, keine gewoehnlichen Kacheln) */
-.regime-karte {
-  border: 1px solid var(--rand);
-  border-radius: 10px;
-  padding: 14px 16px;
-  background: var(--flaeche);
+/* ==========================================================================
+   Regime-Tafel (Bereich Regime, Version 2)
+   Charts, IPDA-Tabelle, Regime-Kaesten, Nachschlage-Dialoge.
+   ========================================================================== */
+
+/* --- Regime-Farben. Jedes Regime behaelt diese Farbe ueberall auf der Seite:
+   im Chart-Hintergrund, in der Tabelle, in den Kaesten, in den Dialogen und
+   in der Performance-Tabelle (Vorgabe Felix, 2026-09-25).                  */
+:root {
+  --rg-bullsteep:      #e0932a;   /* Bull Steepener  = Orange      (Goldilocks)  */
+  --rg-bearsteep:      #79c96d;   /* Bear Steepener  = Hellgruen   (Reflation)   */
+  --rg-bullflat:       #ef6f6a;   /* Bull Flattener  = Hellrot     (Stagflation) */
+  --rg-bearflat:       #9e1b1b;   /* Bear Flattener  = Dunkelrot   (Deflation)   */
+  --rg-twist:          #8d8c86;   /* Twist / Neutral = Grau                      */
+  --rg-text-hell:      #1a1207;   /* Schrift auf hellen Regime-Flaechen          */
+  --rg-text-dunkel:    #ffffff;   /* Schrift auf dunklen Regime-Flaechen         */
 }
-.regime-karte-titel {
+
+.r-bullsteep { --rg: var(--rg-bullsteep); --rg-text: var(--rg-text-hell); }
+.r-bearsteep { --rg: var(--rg-bearsteep); --rg-text: var(--rg-text-hell); }
+.r-bullflat  { --rg: var(--rg-bullflat);  --rg-text: var(--rg-text-hell); }
+.r-bearflat  { --rg: var(--rg-bearflat);  --rg-text: var(--rg-text-dunkel); }
+.r-twist     { --rg: var(--rg-twist);     --rg-text: var(--rg-text-dunkel); }
+.r-leer      { --rg: transparent;         --rg-text: var(--text-stumm); }
+
+/* --- Rahmen und Kopfzeile ------------------------------------------------- */
+.regime-tafel { margin-top: 26px; }
+
+.tafel-kopf {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.tf-schalter, .spanne-schalter { display: flex; gap: 4px; }
+
+.tf-knopf, .spanne-knopf {
+  background: var(--ebene);
+  border: 1px solid var(--rand);
+  color: var(--text-sekundaer);
+  border-radius: 8px;
+  cursor: pointer;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+}
+.tf-knopf {
+  padding: 7px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: .04em;
+}
+.spanne-knopf { padding: 6px 12px; font-size: 12px; }
+
+.tf-knopf:hover, .spanne-knopf:hover { color: var(--text-primaer); }
+.tf-knopf.aktiv, .spanne-knopf.aktiv {
+  background: var(--text-primaer);
+  border-color: var(--text-primaer);
+  color: var(--flaeche);
+}
+
+/* --- Raster: links Charts, rechts Tabelle --------------------------------- */
+.tafel-raster {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.tafel-links, .tafel-rechts {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.karte {
+  position: relative;
+  border: 1px solid var(--rand);
+  border-radius: 12px;
+  background: var(--flaeche);
+  padding: 14px 16px 10px;
+  margin: 0;
+  box-shadow: var(--schatten);
+}
+.karte-kopf { margin-bottom: 8px; }
+.karte-kopf h3 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-sekundaer);
+}
+.karte-unter {
+  margin: 3px 0 0;
+  font-size: 12px;
+  color: var(--text-stumm);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Charts ---------------------------------------------------------------- */
+.chart-paar {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.chart-karte:hover .chart-lupe { opacity: 1; }
+.chart-lupe {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  font-size: 15px;
+  color: var(--text-stumm);
+  opacity: 0;
+  transition: opacity .12s ease;
+  pointer-events: none;
+}
+
+.chart-box {
+  position: relative;
+  cursor: zoom-in;
+  border-radius: 8px;
+}
+.chart-box:focus-visible { outline: 2px solid var(--serie-1); outline-offset: 3px; }
+.chart-box svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart-leer {
+  margin: 0;
+  padding: 36px 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-stumm);
+}
+
+/* Regime-Hintergrund im ZSK-Chart */
+.chart-band {
+  fill: var(--rg);
+  opacity: .30;
+}
+
+.chart-tip {
+  position: absolute;
+  pointer-events: none;
+  background: var(--flaeche);
+  border: 1px solid var(--rand);
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 12px;
+  box-shadow: 0 6px 20px rgba(0,0,0,.22);
+  white-space: nowrap;
+  z-index: 3;
+}
+.chart-tip-datum { color: var(--text-stumm); }
+.chart-tip-wert {
+  font-weight: 600;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.chart-tip-regime {
+  margin-top: 5px;
+  padding: 2px 7px;
+  border-radius: 5px;
   font-size: 11px;
-  letter-spacing: .05em;
+  font-weight: 600;
+  background: var(--rg);
+  color: var(--rg-text);
+}
+
+.chart-vollbild { cursor: default; margin-top: 16px; }
+
+/* --- Regime-Kaesten -------------------------------------------------------- */
+.regime-kasten {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  border: 1px solid var(--rand);
+  border-left: 5px solid var(--rg);
+  border-radius: 10px;
+  padding: 12px 16px;
+  background: color-mix(in srgb, var(--rg) 16%, var(--flaeche));
+}
+.kasten-titel {
+  font-size: 11px;
+  letter-spacing: .06em;
   text-transform: uppercase;
   color: var(--text-stumm);
 }
-.regime-karte-wert {
+.kasten-wert { font-size: 20px; font-weight: 650; letter-spacing: -0.01em; }
+.kasten-meta { font-size: 12px; color: var(--text-sekundaer); }
+.kasten-abgleich {
+  display: flex;
+  align-items: center;
+  gap: 7px;
   margin-top: 5px;
-  font-size: 20px;
-  font-weight: 600;
-}
-.regime-karte-seit {
-  margin-top: 4px;
   font-size: 12px;
+}
+.ap-gut-text { color: var(--gut); }
+.ap-schlecht-text { color: var(--schlecht); }
+
+.kasten-reihe {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: stretch;
+}
+
+/* --- Knoepfe fuer die Nachschlage-Dialoge ---------------------------------- */
+.knopf-reihe {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.tafel-knopf {
+  background: var(--ebene);
+  border: 1px solid var(--rand);
+  border-radius: 10px;
+  color: var(--text-primaer);
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 16px 12px;
+  text-align: center;
+}
+.tafel-knopf:hover { border-color: var(--achse); background: var(--flaeche); }
+.tafel-knopf-schmal { padding: 12px 20px; font-size: 13px; }
+
+/* --- IPDA-Tabelle ---------------------------------------------------------- */
+.tabellen-karte { padding-bottom: 0; }
+.regime-tabelle {
+  max-height: 460px;
+  overflow: auto;
+  margin: 0 -16px;
+  border-top: 1px solid var(--raster);
+}
+.regime-tabelle table { font-size: 12px; }
+.regime-tabelle thead th {
+  padding: 8px 8px;
+  font-size: 11px;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--raster);
+}
+.regime-tabelle td {
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--raster);
+  white-space: nowrap;
+}
+.regime-tabelle tbody tr:hover td { background: var(--ebene); }
+.regime-tabelle .datum { color: var(--text-sekundaer); font-variant-numeric: tabular-nums; }
+.regime-tabelle .zahl, .regime-tabelle td.zahl {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.regime-tabelle th.mitte, .regime-tabelle td.mitte { text-align: center; }
+.regime-tabelle .dz-plus { color: var(--gut); }
+.regime-tabelle .dz-minus { color: var(--schlecht); }
+.regime-tabelle .dz-null { color: var(--text-stumm); }
+
+.regime-zelle { padding-right: 6px !important; }
+.regime-pille {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  background: var(--rg);
+  color: var(--rg-text);
+}
+
+.abgleich-punkt {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex: none;
+}
+.ap-gut { background: var(--gut); }
+.ap-schlecht { background: var(--schlecht); }
+
+/* --- Nachschlage-Dialoge (Sharp Ratios, Core Setups, Info) ----------------- */
+.dialog-breit { width: min(1240px, 100%); }
+body.dialog-offen { overflow: hidden; }
+
+.nachschlag-inhalt { margin-top: 18px; overflow-x: auto; }
+.nachschlag-tabelle { font-size: 12px; }
+.nachschlag-tabelle th, .nachschlag-tabelle td {
+  padding: 5px 9px;
+  border: 1px solid var(--raster);
+  white-space: nowrap;
+}
+.nachschlag-tabelle .zahl { text-align: right; font-variant-numeric: tabular-nums; }
+.nk-ecke { background: var(--ebene); }
+.nk-kopf {
+  background: var(--rg);
+  color: var(--rg-text);
+  text-align: center;
+}
+.nk-kopf-titel { display: block; font-weight: 700; }
+.nk-kopf-unter { display: block; font-size: 10px; font-weight: 500; opacity: .85; }
+.nk-unterkopf {
+  font-size: 10px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--text-stumm);
+  background: var(--ebene);
+}
+.nk-seite {
+  font-weight: 700;
+  background: var(--ebene);
   color: var(--text-sekundaer);
 }
-.regime-karte-text {
-  margin-top: 8px;
-  font-size: 12px;
-  color: var(--text-stumm);
+.nk-long .nk-seite { color: var(--gut); }
+.nk-short .nk-seite { color: var(--schlecht); }
+.nk-wert { font-weight: 600; }
+.nk-top { color: var(--schlecht); }      /* im Original rot hervorgehoben */
+.nk-leer { background: var(--ebene); }
+.nk-zeile { background: var(--ebene); font-weight: 600; }
+.nk-feld { text-align: center; }
+
+/* Weiche Regime-Flaechen fuer die Info-Tabelle */
+.r-bullsteep-weich { background: color-mix(in srgb, var(--rg-bullsteep) 36%, var(--flaeche)); }
+.r-bearsteep-weich { background: color-mix(in srgb, var(--rg-bearsteep) 36%, var(--flaeche)); }
+.r-bullflat-weich  { background: color-mix(in srgb, var(--rg-bullflat)  36%, var(--flaeche)); }
+.r-bearflat-weich  { background: color-mix(in srgb, var(--rg-bearflat)  46%, var(--flaeche)); }
+
+/* --- Performance-Tabelle: Regime-Spalte in Regime-Farbe ------------------- */
+.referenz-tabelle .regime-spalte {
+  background: var(--rg);
+  color: var(--rg-text);
+  font-weight: 600;
 }
 
 /* Historische Referenztabelle (statisch, kein Live-Abruf) */
@@ -767,9 +1073,21 @@ td.zahl { text-align: right; }
 
 /* --- Handy --------------------------------------------------------------- */
 
+/* Regime-Tafel: ab hier untereinander statt nebeneinander */
+@media (max-width: 1080px) {
+  .tafel-raster { grid-template-columns: minmax(0, 1fr); }
+  .regime-tabelle { max-height: 380px; }
+}
+
 @media (max-width: 620px) {
   body { padding: 0 14px 36px; }
   .kopf h1 { font-size: 25px; }
+  .chart-paar { grid-template-columns: minmax(0, 1fr); }
+  .kasten-reihe { grid-template-columns: minmax(0, 1fr); }
+  .tafel-kopf { justify-content: flex-start; }
+  .regime-tabelle { max-height: 320px; }
+  .nachschlag-tabelle { font-size: 11px; }
+  .nachschlag-tabelle th, .nachschlag-tabelle td { padding: 4px 6px; }
   .kachel-raster { grid-template-columns: repeat(auto-fill, minmax(158px, 1fr)); gap: 11px; }
   .kachel-wert { font-size: 23px; }
   .dialog { padding: 18px 16px 16px; border-radius: 12px; }
