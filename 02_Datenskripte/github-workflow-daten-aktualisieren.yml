@@ -1,0 +1,125 @@
+# ============================================================================
+# Automatischer Datenabruf fuer das Makro-Dashboard
+#
+# DIESE DATEI GEHOERT NICHT HIERHIN, sondern ins GitHub-Repository unter:
+#     .github/workflows/daten-aktualisieren.yml
+#
+# Sie liegt hier nur zum Nachschlagen und Kopieren. Die Schritt-fuer-Schritt-
+# Anleitung zum Einrichten steht in 05_Dashboard/README.md, Abschnitt 8b.
+#
+# Was der Workflow tut:
+#   1. Holt sich den aktuellen Stand des Repositories
+#   2. Fuehrt nacheinander alle Abrufskripte aus 02_Datenskripte aus
+#   3. Committet die veraenderten Datendateien zurueck ins Repository
+#   4. GitHub Pages veroeffentlicht die neue Version automatisch
+#
+# Wichtige Punkte:
+#   - Laeuft auf "windows-latest". Das ist Absicht: die Skripte sind fuer
+#     Windows PowerShell 5.1 geschrieben (Pfade mit Backslash, $env:TEMP).
+#     Auf einem Linux-Server wuerden sie nicht laufen.
+#   - Der FRED-Schluessel kommt aus den GitHub-Secrets, NIE aus einer Datei.
+#     Die Datei zugangsdaten.txt darf nie ins Repository.
+#   - Jedes Skript laeuft mit "continue-on-error": faellt eine Quelle aus,
+#     laufen die anderen trotzdem weiter. Das Dashboard behaelt dann fuer den
+#     ausgefallenen Bereich die zuletzt erfolgreich geholten Daten.
+# ============================================================================
+
+name: Daten aktualisieren
+
+on:
+  schedule:
+    # Zeiten sind UTC. Deutschland ist im Sommer UTC+2, im Winter UTC+1.
+    - cron: '0 5 * * *'    # morgens  (07:00 Sommerzeit / 06:00 Winterzeit)
+    - cron: '0 19 * * *'   # abends   (21:00 Sommerzeit / 20:00 Winterzeit)
+  # Erlaubt zusaetzlich den manuellen Start ueber den Knopf "Run workflow"
+  workflow_dispatch:
+
+# Noetig, damit der Workflow die aktualisierten Daten zurueckschreiben darf
+permissions:
+  contents: write
+
+jobs:
+  daten-holen:
+    runs-on: windows-latest
+
+    env:
+      FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+      # Im Repository liegen die Website-Dateien direkt im Wurzelordner,
+      # die Daten also in "daten". Lokal auf dem PC ist es "01_Website\daten" -
+      # deshalb steuern die Skripte das ueber diese Umgebungsvariable.
+      DASHBOARD_DATEN: ${{ github.workspace }}\daten
+
+    steps:
+      - name: Repository holen
+        uses: actions/checkout@v4
+
+      - name: Arbeitsmarkt
+        continue-on-error: true
+        shell: powershell
+        run: .\02_Datenskripte\Daten-Abrufen-Arbeitsmarkt.ps1
+
+      - name: Inflation
+        continue-on-error: true
+        shell: powershell
+        run: .\02_Datenskripte\Daten-Abrufen-Inflation.ps1
+
+      - name: Wachstum
+        continue-on-error: true
+        shell: powershell
+        run: .\02_Datenskripte\Daten-Abrufen-Wachstum.ps1
+
+      - name: Plumbing
+        continue-on-error: true
+        shell: powershell
+        run: .\02_Datenskripte\Daten-Abrufen-Plumbing.ps1
+
+      - name: Regime
+        continue-on-error: true
+        shell: powershell
+        run: .\02_Datenskripte\Daten-Abrufen-Regime.ps1
+
+      - name: Zinsen
+        continue-on-error: true
+        shell: powershell
+        run: .\02_Datenskripte\Daten-Abrufen-Zinsen.ps1
+
+      # Webquellen: ISM, Challenger, NFIB, Conference Board, GSCPI.
+      # Diese Quellen sind Seitenabrufe und damit am ehesten anfaellig dafuer,
+      # aus einem Rechenzentrum blockiert zu werden.
+      - name: Webquellen
+        continue-on-error: true
+        shell: powershell
+        run: .\02_Datenskripte\Daten-Abrufen-Webquellen.ps1
+
+      - name: Sentiment
+        continue-on-error: true
+        shell: powershell
+        run: .\02_Datenskripte\Daten-Abrufen-Sentiment.ps1
+
+      # Kalender zuletzt: Der Forex-Factory-Feed hat ein hartes Rate-Limit.
+      # Faellt er aus, sind die anderen Bereiche schon fertig geschrieben.
+      - name: Event-Kalender
+        continue-on-error: true
+        shell: powershell
+        run: .\02_Datenskripte\Daten-Abrufen-Kalender.ps1
+
+      - name: Aktualisierte Daten zurueckschreiben
+        shell: powershell
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Nur vorhandene Pfade vormerken - ein fehlender Ordner wuerde
+          # "git add" sonst mit einem Fehler abbrechen lassen.
+          foreach ($pfad in @("daten", "02_Datenskripte/verlauf")) {
+            if (Test-Path $pfad) { git add $pfad } else { Write-Host ("Nicht vorhanden, uebersprungen: " + $pfad) }
+          }
+          $offen = git status --porcelain
+          if ([string]::IsNullOrWhiteSpace($offen)) {
+            Write-Host "Keine Aenderungen - es gibt nichts zu committen."
+          } else {
+            Write-Host "Geaenderte Dateien:"
+            Write-Host $offen
+            git commit -m ("Daten automatisch aktualisiert ({0} UTC)" -f (Get-Date -Format "yyyy-MM-dd HH:mm"))
+            git push
+            Write-Host "Aenderungen hochgeladen."
+          }
