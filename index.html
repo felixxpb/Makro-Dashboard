@@ -99,12 +99,15 @@
 })();
 </script>
 
-<!-- PDF-Report: jsPDF + AutoTable von CDN (braucht Internetverbindung), danach
+<!-- PDF-Report (Version 2, 2026-09-27): nur noch jsPDF von CDN (braucht
+     Internetverbindung). Die AutoTable-Erweiterung ist nicht mehr noetig,
+     seit der Report seine Tabellen selbst als Vektor zeichnet. Danach
      motor.js nur zum Nachrechnen der Werte (baut auf dieser Seite keine
-     Kacheln, siehe Schutz in motor.js) und pdf-report.js fuer den Knopf. -->
+     Kacheln, siehe Schutz in motor.js) und pdf-report.js fuer den Knopf.
+     Die Regime-Einstufung fuer die Regime-Seite des Reports laedt
+     pdf-report.js selbst nach (daten/regime.js + regime-ansicht.js). -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/4.2.1/jspdf.umd.min.js"></script>
 <script>if (window.jspdf) { window.jsPDF = window.jspdf.jsPDF; }</script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/5.0.8/jspdf.plugin.autotable.min.js"></script>
 <script src="motor.js"></script>
 <script src="pdf-report.js"></script>
 

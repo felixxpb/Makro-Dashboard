@@ -31,9 +31,6 @@
   var D = window.REGIME_DATEN;
   if (!D || !D.reihen || !D.reihen.DGS2 || !D.reihen.DGS10) { return; }
 
-  var WURZEL = document.getElementById("regimeKopf");
-  if (!WURZEL) { return; }
-
   var FENSTER_IPDA = 20;
   var FENSTER_TAG = 3;
 
@@ -170,6 +167,27 @@
     D1: annotiere(BASIS_D1),
     W1: annotiere(BASIS_W1)
   };
+
+  /* --- Regime-Logik zur Wiederverwendung ------------------------------------
+     Alles oberhalb dieser Zeile ist reine Berechnung und braucht kein DOM.
+     Der PDF-Report (pdf-report.js) liest die fertig eingestuften Reihen hier
+     heraus, statt die Einstufung ein zweites Mal zu programmieren - gleiches
+     Prinzip wie window.MOTOR in motor.js. Damit kann es nie einen
+     Unterschied zwischen Regime-Seite und Report geben.                     */
+  window.REGIME_LOGIK = {
+    daten: DATEN,              // { D1: [...], W1: [...] } mit .tag / .ipda / .dt / .di
+    stammdaten: REGIME,        // Label -> { klasse, quadrant }
+    klassifiziere: klassifiziere,
+    fensterIpda: FENSTER_IPDA,
+    fensterTag: FENSTER_TAG,
+    bandFeld: BAND_FELD
+  };
+
+  /* Ab hier wird die Regime-Seite selbst gebaut. Auf allen anderen Seiten
+     (z. B. der Startseite, die diese Datei nur fuer den PDF-Report laedt)
+     fehlt der Anker und die Funktion endet hier.                            */
+  var WURZEL = document.getElementById("regimeKopf");
+  if (!WURZEL) { return; }
 
   /* --- Zustand -------------------------------------------------------------- */
   var zustand = {
