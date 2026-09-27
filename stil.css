@@ -1073,6 +1073,199 @@ body.dialog-offen { overflow: hidden; }
 
 /* --- Handy --------------------------------------------------------------- */
 
+/* ==========================================================================
+   Event-Kalender (Startseite, unter den Bereichs-Kacheln)
+   Struktur nach Forex-Factory-Vorbild, Farben und Schrift vom Dashboard.
+   ========================================================================== */
+
+.kalender { margin-top: 38px; }
+
+.kalender-kopf {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.kalender h2 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--text-sekundaer);
+}
+
+.kalender-unter {
+  margin: 5px 0 0;
+  font-size: 12px;
+  color: var(--text-stumm);
+}
+
+.kalender-hinweis {
+  margin: 0;
+  padding: 22px 16px;
+  font-size: 13px;
+  color: var(--text-stumm);
+  text-align: center;
+  border: 1px dashed var(--rand);
+  border-radius: 10px;
+}
+
+.kalender-fuss {
+  margin: 10px 0 0;
+  font-size: 11px;
+  color: var(--text-stumm);
+}
+
+/* --- Filter je Bedeutung --------------------------------------------------- */
+.kalender-filter { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.filter-knopf {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--ebene);
+  border: 1px solid var(--rand);
+  border-radius: 8px;
+  color: var(--text-stumm);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  padding: 6px 11px;
+  opacity: .5;
+}
+.filter-knopf.aktiv { opacity: 1; color: var(--text-primaer); }
+.filter-knopf:hover { border-color: var(--achse); }
+.filter-anzahl {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-stumm);
+  font-size: 11px;
+}
+
+/* --- Impact-Punkte --------------------------------------------------------- */
+.imp-punkt {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex: none;
+}
+.imp-hoch     { background: #d03b3b; }
+.imp-mittel   { background: #e08a2a; }
+.imp-niedrig  { background: #d8c33c; }
+.imp-feiertag { background: var(--achse); }
+.imp-sonst    { background: var(--text-stumm); }
+
+/* --- Tabelle, Kopf und Tagestrenner ---------------------------------------- */
+.kalender-liste {
+  border: 1px solid var(--rand);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.kalender-tabelle {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.kalender-tabelle thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--ebene);
+  border-bottom: 1px solid var(--rand);
+  padding: 8px 10px;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-stumm);
+}
+.kalender-tabelle thead th.k-wert { text-align: right; }
+
+.kalender-tabelle td {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--raster);
+  vertical-align: middle;
+}
+.kalender-tabelle tbody tr:last-child td { border-bottom: none; }
+.kalender-tabelle tbody tr:not(.tag-zeile):hover td { background: var(--ebene); }
+
+/* Tagestrenner als volle Zeile innerhalb der Tabelle */
+.tag-zeile td {
+  background: var(--ebene);
+  border-top: 1px solid var(--rand);
+  border-bottom: 1px solid var(--rand);
+  padding: 7px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-sekundaer);
+}
+.tag-zeile.tag-heute td { color: var(--text-primaer); }
+.tag-heute-marke {
+  display: inline-block;
+  margin-left: 10px;
+  background: var(--text-primaer);
+  color: var(--flaeche);
+  border-radius: 4px;
+  padding: 1px 7px;
+  font-size: 10px;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  vertical-align: 1px;
+}
+
+.k-zeit {
+  width: 84px;
+  white-space: nowrap;
+  color: var(--text-sekundaer);
+  font-variant-numeric: tabular-nums;
+}
+.k-waehrung { width: 56px; }
+.waehrung-marke {
+  display: inline-block;
+  min-width: 38px;
+  text-align: center;
+  padding: 2px 6px;
+  border: 1px solid var(--rand);
+  border-radius: 5px;
+  background: var(--ebene);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .03em;
+  color: var(--text-sekundaer);
+}
+.k-impact { width: 22px; text-align: center; }
+.k-titel { color: var(--text-primaer); }
+.k-wert {
+  width: 86px;
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-sekundaer);
+}
+.k-vorher { color: var(--text-stumm); }
+
+/* Vergangene Termine treten zurueck, der naechste wird hervorgehoben */
+.termin-vorbei td { opacity: .45; }
+.termin-naechster td { background: color-mix(in srgb, var(--serie-1) 12%, transparent); }
+.termin-naechster .k-titel { font-weight: 600; }
+.naechster-marke {
+  margin-left: 9px;
+  padding: 1px 7px;
+  border-radius: 4px;
+  background: var(--serie-1);
+  color: #fff;
+  font-size: 10px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
 /* Regime-Tafel: ab hier untereinander statt nebeneinander */
 @media (max-width: 1080px) {
   .tafel-raster { grid-template-columns: minmax(0, 1fr); }
@@ -1088,6 +1281,15 @@ body.dialog-offen { overflow: hidden; }
   .regime-tabelle { max-height: 320px; }
   .nachschlag-tabelle { font-size: 11px; }
   .nachschlag-tabelle th, .nachschlag-tabelle td { padding: 4px 6px; }
+  /* Kalender: Prognose/Vorwert weg, damit Uhrzeit und Titel lesbar bleiben */
+  .kalender-tabelle { font-size: 12px; }
+  .kalender-tabelle td { padding: 6px 7px; }
+  .k-zeit { width: 58px; }
+  .k-waehrung { width: 46px; }
+  .waehrung-marke { min-width: 32px; padding: 1px 4px; }
+  .k-vorher { display: none; }
+  .k-wert { width: 62px; }
+  .naechster-marke { display: none; }
   .kachel-raster { grid-template-columns: repeat(auto-fill, minmax(158px, 1fr)); gap: 11px; }
   .kachel-wert { font-size: 23px; }
   .dialog { padding: 18px 16px 16px; border-radius: 12px; }
