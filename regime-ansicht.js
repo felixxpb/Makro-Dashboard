@@ -174,7 +174,24 @@
      heraus, statt die Einstufung ein zweites Mal zu programmieren - gleiches
      Prinzip wie window.MOTOR in motor.js. Damit kann es nie einen
      Unterschied zwischen Regime-Seite und Report geben.                     */
+  // Core Setups: Long- und Short-Seite je Regime (Reihenfolge Q1 bis Q4).
+  // true = im Original hervorgehoben. Wird von der Regime-Seite (Dialog
+  // "Core Setups") und vom PDF-Report benutzt.
+  var CORE_LONG = [
+    [["Bitcoin", 1.3, true], ["GBP/USD", 1.0], ["US 500", 0.8], ["AUD/USD", 0.6], ["EUR/USD", 0.6]],
+    [["AUD/USD", 1.5, true], ["AUD/JPY", 1.3], ["CAD/JPY", 1.3], ["GBP/USD", 1.3], ["EUR/USD", 1.0], ["AUD/CHF", 0.8]],
+    [["JPY/EUR", 0.8], ["USD/CAD", 0.7]],
+    [["USD/CAD", 1.5], ["JPY/GBP", 1.4], ["JPY/EUR", 1.3]]
+  ];
+  var CORE_SHORT = [
+    [["USD/CAD", 1.2, true], ["USD/JPY", 1.0], ["USD/CHF", 0.7]],
+    [["USD/CAD", 1.5, true], ["EUR/CAD", 0.5], ["EUR/AUD", 0.5]],
+    [["AUD/USD", 1.1, true], ["AUD/JPY", 1.1, true], ["EUR/USD", 0.8], ["GBP/USD", 0.7], ["GBP/JPY", 0.7], ["CAD/JPY", 0.7], ["AUD/CHF", 0.6]],
+    [["AUD/USD", 1.6, true], ["GBP/USD", 1.6, true], ["EUR/USD", 1.5], ["AUD/JPY", 1.4], ["CAD/JPY", 1.3], ["AUD/CHF", 1.0], ["GBP/CHF", 1.0], ["CAD/CHF", 0.9], ["EUR/CHF", 0.9]]
+  ];
+
   window.REGIME_LOGIK = {
+    core: { long: CORE_LONG, short: CORE_SHORT },
     daten: DATEN,              // { D1: [...], W1: [...] } mit .tag / .ipda / .dt / .di
     stammdaten: REGIME,        // Label -> { klasse, quadrant }
     klassifiziere: klassifiziere,
@@ -726,19 +743,8 @@
     [["USD", 0.7], ["JPY", 0.5], ["CHF", 0.1], ["US500", 0.0], ["Bitcoin", 0.0], ["Gold", -0.7], ["CAD", -0.8], ["EUR", -0.8], ["AUD", -0.9], ["GBP", -0.9], ["Oil", -2.1]]
   ];
 
-  // Core Setups: Long- und Short-Seite je Regime. true = im Original hervorgehoben
-  var CORE_LONG = [
-    [["Bitcoin", 1.3, true], ["GBP/USD", 1.0], ["US 500", 0.8], ["AUD/USD", 0.6], ["EUR/USD", 0.6]],
-    [["AUD/USD", 1.5, true], ["AUD/JPY", 1.3], ["CAD/JPY", 1.3], ["GBP/USD", 1.3], ["EUR/USD", 1.0], ["AUD/CHF", 0.8]],
-    [["JPY/EUR", 0.8], ["USD/CAD", 0.7]],
-    [["USD/CAD", 1.5], ["JPY/GBP", 1.4], ["JPY/EUR", 1.3]]
-  ];
-  var CORE_SHORT = [
-    [["USD/CAD", 1.2, true], ["USD/JPY", 1.0], ["USD/CHF", 0.7]],
-    [["USD/CAD", 1.5, true], ["EUR/CAD", 0.5], ["EUR/AUD", 0.5]],
-    [["AUD/USD", 1.1, true], ["AUD/JPY", 1.1, true], ["EUR/USD", 0.8], ["GBP/USD", 0.7], ["GBP/JPY", 0.7], ["CAD/JPY", 0.7], ["AUD/CHF", 0.6]],
-    [["AUD/USD", 1.6, true], ["GBP/USD", 1.6, true], ["EUR/USD", 1.5], ["AUD/JPY", 1.4], ["CAD/JPY", 1.3], ["AUD/CHF", 1.0], ["GBP/CHF", 1.0], ["CAD/CHF", 0.9], ["EUR/CHF", 0.9]]
-  ];
+  // Core Setups (CORE_LONG / CORE_SHORT): stehen seit 2026-10-04 weiter oben,
+  // direkt vor window.REGIME_LOGIK, damit der PDF-Report sie lesen kann.
 
   // Info: Steckbrief je Regime
   var INFO_ZEILEN = [
