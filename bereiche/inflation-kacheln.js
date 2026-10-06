@@ -14,7 +14,8 @@ window.QUELLEN = {
   fred:          window.INFLATION_DATEN,
   web:           window.WEBQUELLEN_DATEN,
   arbeitsmarkt:  window.ARBEITSMARKT_DATEN,
-  cpiKategorien: window.CPI_KATEGORIEN_DATEN
+  cpiKategorien: window.CPI_KATEGORIEN_DATEN,
+  ppiKategorien: window.PPI_KATEGORIEN_DATEN
 };
 
 window.GRUPPEN = [
@@ -64,17 +65,13 @@ window.KACHELN = [
     format: "prozent", richtung: "neutral",
     ableitung: "yoy", ableitungSchritt: 12,
     vergleich: 1, vergleichName: "Vormonat",
-    aufschluesselung: {
-      titel: "PPI nach Kategorien, YoY",
-      hinweis: "Die sechs Bausteine von PPI Final Demand. Veränderungsrate je Kategorie zum Vorjahr, nicht ihr Gewicht im Gesamtwert. Die gestrichelte Linie markiert den Headline-Wert.",
-      kategorien: [
-        { schluessel: "PPIDFS",   name: "Food" },
-        { schluessel: "PPIDES",   name: "Energy" },
-        { schluessel: "WPSFD413", name: "Core Goods" },
-        { schluessel: "PPITSS",   name: "Trade Services" },
-        { schluessel: "PPIAWS",   name: "Transport und Lager" },
-        { schluessel: "PPITWS",   name: "Übrige Services" }
-      ]
+    // Entscheidung Felix, 2026-10-06: dieselben Kategorien wie beim CPI, ebenfalls von BLS.
+    // Nicht jede CPI-Kategorie hat ein exaktes PPI-Gegenstueck; in Klammern steht jeweils
+    // die verwendete PPI-Reihe. "Food away from home" entfaellt (im PPI nicht erfasst).
+    aufschluesselungBLS: {
+      titel: "PPI nach Kategorien (BLS), YoY",
+      hinweis: "Dieselben Kategorien wie beim CPI, Veränderungsrate je Kategorie zum Vorjahr, direkt von BLS (nicht saisonbereinigt). In Klammern steht die verwendete PPI-Reihe, weil der PPI nicht alle CPI-Kategorien exakt abbildet. Food away from home entfällt (Gastronomie wird im PPI nicht erfasst); Shelter ist über Beherbergung angenähert. Mit den Pfeilen lassen sich die letzten 12 Monate durchblättern.",
+      quelle: "ppiKategorien"
     }
   },
   {

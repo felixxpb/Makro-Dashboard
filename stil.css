@@ -1829,3 +1829,20 @@ body.ein-offen { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
   .bm-nadel, .bm-fuell { transition: none; }
 }
+
+
+/* Kapitalrotation: Linien im Detail-Chart einzeln abschaltbar */
+.legende-knopf {
+  background: none;
+  border: 1px solid var(--rand);
+  border-radius: 7px;
+  padding: 4px 10px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--text-primaer);
+  cursor: pointer;
+}
+.legende-knopf[aria-pressed="false"] { color: var(--text-stumm); text-decoration: line-through; }
+.legende-knopf[aria-pressed="false"] .legende-strich { opacity: 0.3; }
+.legende-knopf:hover { border-color: var(--achse); }
+.legende-hinweis { flex-basis: 100%; font-size: 11px; color: var(--text-stumm); }

@@ -19,7 +19,7 @@
   "use strict";
 
   var HEBEL = 1.3;
-  var KETTE_SCHWELLE = 50;   /* Einzel-Score, ab dem eine Kennzahl der Stress-Kette als "zeigt Stress" gilt */
+  var KETTE_SCHWELLE = 40;   /* Einzel-Score, ab dem eine Kennzahl der Stress-Kette als "zeigt Stress" gilt */
 
   /* Zonen rein beschreibend (CLAUDE.md Abschnitt 5), Farben in stil.css (--st-1 bis --st-5; text = lesbare Schriftfarbe auf dunklem Grund) */
   var ZONEN = [

@@ -429,7 +429,204 @@
     return punkte.filter(function (p) { return new Date(p.d) >= grenze; });
   }
 
+  /* --- Kapitalrotation: Chart mit mehreren, einzeln abschaltbaren Linien ---
+     Konfiguration an der Kachel: rotation = { spx, zaehler, nenner, zaehlerName,
+     nennerName } (Schluessel der Einzelreihen in derselben Quelle).
+     Mehrere Linien liegen auf unterschiedlichen Skalen (S&P ~7.800, Ratio ~1,4,
+     ETFs ~40-220): bei zwei oder mehr sichtbaren Linien wird deshalb jede auf
+     100 am Anfang des gewaehlten Zeitraums normiert; die echten Werte stehen im
+     Tooltip. Bleibt nur eine Linie an, zeigt die Achse die echten Werte. */
+
+  var rotationAus = {};   // id -> true, wenn die Linie ausgeblendet ist
+
+  function rotationWert(v, id) {
+    if (v === null || v === undefined || isNaN(v)) { return "–"; }
+    var dez = id === "ratio" ? 4 : 2;
+    return v.toLocaleString("de-DE", { minimumFractionDigits: dez, maximumFractionDigits: dez });
+  }
+
+  function zeichneRotation(k, punkte) {
+    var behaelter = document.getElementById("graphBehaelter");
+    var legende = document.getElementById("graphLegende");
+    behaelter.innerHTML = "";
+    legende.innerHTML = "";
+    if (punkte.length < 2) { behaelter.appendChild(baueEinzelwert(k, punkte)); return; }
+
+    var cfg = k.rotation;
+    var quelle = (window.QUELLEN || QUELLEN)[k.quelle];
+    function reihenWerte(schluessel) {
+      var r = quelle && quelle.reihen && quelle.reihen[schluessel];
+      var m = {};
+      if (r && r.punkte) { r.punkte.forEach(function (p) { m[p.d] = p.v; }); }
+      return m;
+    }
+    var linien = [
+      { id: "spx",     name: "S&P 500",        farbe: "var(--text-primaer)", map: reihenWerte(cfg.spx) },
+      { id: "ratio",   name: k.titel,          farbe: "var(--serie-1)",      map: null },
+      { id: "zaehler", name: cfg.zaehlerName,  farbe: "var(--gut)",          map: reihenWerte(cfg.zaehler) },
+      { id: "nenner",  name: cfg.nennerName,   farbe: "var(--schlecht)",     map: reihenWerte(cfg.nenner) }
+    ];
+    linien.forEach(function (l) {
+      l.werte = punkte.map(function (p) {
+        var v = l.map ? l.map[p.d] : p.v;
+        return (v === undefined || v === null || isNaN(v)) ? null : v;
+      });
+      l.basis = null;
+      for (var i = 0; i < l.werte.length; i++) { if (l.werte[i] !== null) { l.basis = l.werte[i]; break; } }
+      l.vorhanden = l.basis !== null;
+    });
+
+    var sichtbar = linien.filter(function (l) { return l.vorhanden && !rotationAus[l.id]; });
+    var normiert = sichtbar.length > 1;
+
+    // Abschalt-Knoepfe (ersetzen die Legende)
+    var vorhandene = linien.filter(function (l) { return l.vorhanden; });
+    vorhandene.forEach(function (l, pos) {
+      var an = !rotationAus[l.id];
+      var b = el("button", "legende-eintrag legende-knopf");
+      b.type = "button";
+      b.setAttribute("aria-pressed", an ? "true" : "false");
+      b.title = an ? "Linie ausblenden" : "Linie einblenden";
+      var st = el("span", "legende-strich");
+      st.style.background = l.farbe;
+      b.appendChild(st);
+      b.appendChild(el("span", null, l.name));
+      b.addEventListener("click", function () {
+        var anzahlAn = vorhandene.filter(function (x) { return !rotationAus[x.id]; }).length;
+        if (an && anzahlAn <= 1) { return; }   // mindestens eine Linie bleibt sichtbar
+        rotationAus[l.id] = an;
+        zeichneAlles();
+        var neu = document.querySelectorAll("#graphLegende .legende-knopf");
+        if (neu[pos]) { neu[pos].focus(); }
+      });
+      legende.appendChild(b);
+    });
+    legende.appendChild(el("span", "legende-hinweis", normiert
+      ? "Mehrere Linien: normiert auf 100 am Anfang des Zeitraums (echte Werte im Tooltip)"
+      : "Eine Linie: echte Werte auf der Achse"));
+
+    function plotWert(l, i) {
+      var v = l.werte[i];
+      if (v === null) { return null; }
+      return normiert ? v / l.basis * 100 : v;
+    }
+
+    var B = 860, H = 340;
+    var randL = 56, randR = 18, randO = 16, randU = 34;
+    var plotB = B - randL - randR, plotH = H - randO - randU;
+    var art = frequenzArt(k);
+    var alle = [];
+    sichtbar.forEach(function (l) {
+      for (var i = 0; i < l.werte.length; i++) { var v = plotWert(l, i); if (v !== null) { alle.push(v); } }
+    });
+    var min = Math.min.apply(null, alle), max = Math.max.apply(null, alle);
+    var luft = (max - min) * 0.12 || 1;
+    min -= luft; max += luft;
+    var n = punkte.length;
+    function x(i) { return randL + (i / (n - 1)) * plotB; }
+    function y(v) { return randO + plotH - ((v - min) / (max - min)) * plotH; }
+
+    var NS = "http://www.w3.org/2000/svg";
+    var svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("viewBox", "0 0 " + B + " " + H);
+    svg.setAttribute("role", "img");
+    svg.setAttribute("aria-label", "Verlauf " + k.titel + " mit S&P 500 und den beiden ETFs");
+
+    function svgEl(tag, attr) {
+      var e = document.createElementNS(NS, tag);
+      for (var a in attr) { e.setAttribute(a, attr[a]); }
+      return e;
+    }
+    var stufen = 5;
+    for (var s = 0; s <= stufen; s++) {
+      var wert = min + ((max - min) / stufen) * s;
+      var yy = y(wert);
+      svg.appendChild(svgEl("line", { x1: randL, x2: B - randR, y1: yy.toFixed(1), y2: yy.toFixed(1), stroke: "var(--raster)", "stroke-width": 1 }));
+      var tick = svgEl("text", { x: randL - 9, y: (yy + 4).toFixed(1), "text-anchor": "end", "font-size": 11,
+        fill: "var(--text-stumm)", style: "font-variant-numeric: tabular-nums" });
+      tick.textContent = normiert
+        ? wert.toLocaleString("de-DE", { maximumFractionDigits: 0 })
+        : rotationWert(wert, sichtbar[0].id);
+      svg.appendChild(tick);
+    }
+    var schrittX = Math.max(1, Math.floor(n / 6));
+    for (var i = 0; i < n; i += schrittX) {
+      var tx = svgEl("text", { x: x(i).toFixed(1), y: H - 12, "text-anchor": "middle", "font-size": 11, fill: "var(--text-stumm)" });
+      tx.textContent = punkte[i].d.slice(0, 7).split("-").reverse().join("/");
+      svg.appendChild(tx);
+    }
+    if (normiert) {
+      var l100 = y(100);
+      if (l100 > randO && l100 < randO + plotH) {
+        svg.appendChild(svgEl("line", { x1: randL, x2: B - randR, y1: l100.toFixed(1), y2: l100.toFixed(1),
+          stroke: "var(--achse)", "stroke-width": 1.5, "stroke-dasharray": "4 4" }));
+      }
+    }
+
+    sichtbar.forEach(function (l) {
+      var d = "", offen = false;
+      for (var i = 0; i < n; i++) {
+        var v = plotWert(l, i);
+        if (v === null) { offen = false; continue; }
+        d += (offen ? "L" : "M") + x(i).toFixed(1) + " " + y(v).toFixed(1);
+        offen = true;
+      }
+      svg.appendChild(svgEl("path", { d: d, fill: "none", stroke: l.farbe, "stroke-width": l.id === "ratio" ? 2.4 : 1.8,
+        "stroke-linejoin": "round", "stroke-linecap": "round" }));
+    });
+
+    var kreuz = svgEl("line", { stroke: "var(--achse)", "stroke-width": 1, y1: randO, y2: randO + plotH, opacity: 0 });
+    svg.appendChild(kreuz);
+    var marken = sichtbar.map(function (l) {
+      var c = svgEl("circle", { r: 4, fill: l.farbe, stroke: "var(--flaeche)", "stroke-width": 2, opacity: 0 });
+      svg.appendChild(c);
+      return c;
+    });
+    behaelter.appendChild(svg);
+    var tooltip = el("div", "tooltip");
+    tooltip.style.display = "none";
+    behaelter.appendChild(tooltip);
+
+    function zeige(klientX) {
+      var kasten = svg.getBoundingClientRect();
+      var rel = (klientX - kasten.left) / kasten.width * B;
+      var idx = Math.round(((rel - randL) / plotB) * (n - 1));
+      if (idx < 0) { idx = 0; }
+      if (idx > n - 1) { idx = n - 1; }
+      var px = x(idx);
+      kreuz.setAttribute("x1", px.toFixed(1)); kreuz.setAttribute("x2", px.toFixed(1)); kreuz.setAttribute("opacity", 1);
+      tooltip.innerHTML = "";
+      tooltip.appendChild(el("div", "tooltip-datum", datumText(punkte[idx].d, art)));
+      sichtbar.forEach(function (l, j) {
+        var v = plotWert(l, idx);
+        if (v === null) { marken[j].setAttribute("opacity", 0); return; }
+        marken[j].setAttribute("cx", px.toFixed(1)); marken[j].setAttribute("cy", y(v).toFixed(1)); marken[j].setAttribute("opacity", 1);
+        var z = el("div", "tooltip-zeile");
+        var strich = el("span", "legende-strich");
+        strich.style.background = l.farbe;
+        z.appendChild(strich);
+        z.appendChild(el("span", "tooltip-wert", rotationWert(l.werte[idx], l.id)));
+        z.appendChild(el("span", "tooltip-name", l.name + (normiert ? " (" + v.toLocaleString("de-DE", { maximumFractionDigits: 1 }) + ")" : "")));
+        tooltip.appendChild(z);
+      });
+      tooltip.style.display = "block";
+      var links = (px / B) * behaelter.clientWidth + 14;
+      if (links + tooltip.offsetWidth > behaelter.clientWidth) { links = (px / B) * behaelter.clientWidth - tooltip.offsetWidth - 14; }
+      tooltip.style.left = Math.max(0, links) + "px";
+      tooltip.style.top = "10px";
+    }
+    function verstecke() {
+      kreuz.setAttribute("opacity", 0);
+      marken.forEach(function (m) { m.setAttribute("opacity", 0); });
+      tooltip.style.display = "none";
+    }
+    svg.addEventListener("pointermove", function (e) { zeige(e.clientX); });
+    svg.addEventListener("pointerleave", verstecke);
+    svg.addEventListener("pointerdown", function (e) { zeige(e.clientX); });
+  }
+
   function zeichneGraph(k, punkte, zweit) {
+    if (k.rotation) { zeichneRotation(k, punkte); return; }
     var behaelter = document.getElementById("graphBehaelter");
     behaelter.innerHTML = "";
     document.getElementById("graphLegende").innerHTML = "";
@@ -1132,6 +1329,7 @@
     aktuellerZeitraum = "alle";
     tabelleSichtbar = false;
     blsMonatsIndex = 0;
+    rotationAus = {};
 
     var r = reihe(k);
     var punkte = punkteVon(k);

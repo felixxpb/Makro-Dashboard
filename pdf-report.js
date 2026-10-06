@@ -843,8 +843,227 @@
   }
 
   /* =========================================================================
+     10b. Stress-Barometer Plumbing (Rechenkern: stress-score.js, wie Website)
+     ========================================================================= */
+
+  var STRESS_FARBE = {
+    niedrig:  [0, 99, 0],
+    leicht:   [122, 168, 42],
+    erhoeht:  [224, 160, 0],
+    hoch:     [208, 59, 59],
+    sehrhoch: [122, 15, 15]
+  };
+
+  function zahlDe(v, dez) {
+    return Number(v).toLocaleString("de-DE", { minimumFractionDigits: dez, maximumFractionDigits: dez });
+  }
+
+  function zeichneBarometer(doc, y) {
+    var S = window.STRESS;
+    var erg = S && S.stand() ? S.berechne(S.stand()) : null;
+    if (!erg) { return y; }
+    var H = 61;
+    y = platzPruefen(doc, y, H + 8);
+    y = abschnitt(doc, y, "Stress-Barometer Plumbing · Stand " + isoKurz(S.stand()));
+    karte(doc, RAND, y, INHALT, H);
+
+    /* Halbkreis: Winkel 0 = oben, -PI/2 = links, +PI/2 = rechts */
+    var cx = RAND + 36, cy = y + 29, r1 = 15, r2 = 22;
+    function winkel(v) { return -Math.PI / 2 + Math.PI * v / 100; }
+    S.ZONEN.forEach(function (z) {
+      ringSegment(doc, cx, cy, r1, r2, winkel(z.von) + 0.012, winkel(z.bis) - 0.012, STRESS_FARBE[z.id]);
+    });
+    tinte(doc, C.zart);
+    schrift(doc, 5.5);
+    [0, 20, 40, 60, 80, 100].forEach(function (v) {
+      var a = winkel(v), rr = r2 + 3.2;
+      doc.text(String(v), cx + rr * Math.sin(a), cy - rr * Math.cos(a) + 1, { align: "center" });
+    });
+    var an = winkel(Math.min(100, erg.barometer));
+    stift(doc, C.tinte);
+    doc.setLineWidth(0.8);
+    doc.line(cx, cy, cx + (r1 - 2) * Math.sin(an), cy - (r1 - 2) * Math.cos(an));
+    fuell(doc, C.tinte);
+    doc.circle(cx, cy, 1.6, "F");
+
+    tinte(doc, STRESS_FARBE[erg.zone.id]);
+    schrift(doc, 16, "bold");
+    doc.text(zahlDe(erg.barometer, 0), cx, cy + 9.5, { align: "center" });
+    schrift(doc, 6.6, "bold");
+    doc.text(erg.zone.name, cx, cy + 14, { align: "center" });
+
+    /* Balkenliste rechts */
+    var x0 = RAND + 76, nameB = 27, balkenB = 46, zeile = 4.9;
+    var yy = y + 8;
+    tinte(doc, C.matt);
+    schrift(doc, 5.6, "bold");
+    doc.text("KENNZAHL (GEWICHT)", x0, yy - 2);
+    doc.text("SCORE", RAND + INHALT - 4, yy - 2, { align: "right" });
+    var letzteGruppe = "";
+    erg.bereiche.forEach(function (b) {
+      if (letzteGruppe && b.gruppe !== letzteGruppe) {
+        haarlinie(doc, x0, yy - 1.4, RAND + INHALT - 4, C.linie, 0.12);
+        yy += 1.2;
+      }
+      letzteGruppe = b.gruppe;
+      tinte(doc, C.tinte);
+      schrift(doc, 6.6, "bold");
+      doc.text(b.name, x0, yy + 2.6);
+      tinte(doc, C.zart);
+      schrift(doc, 5.6);
+      doc.text(b.gewicht + " %", x0 + nameB - 1, yy + 2.6, { align: "right" });
+      var bx = x0 + nameB + 1;
+      fuell(doc, C.raster);
+      doc.roundedRect(bx, yy + 0.8, balkenB, 2.6, 1.3, 1.3, "F");
+      if (b.verfuegbar) {
+        var fz = STRESS_FARBE[S.zoneVon(b.score).id];
+        fuell(doc, fz);
+        doc.roundedRect(bx, yy + 0.8, Math.max(2.6, balkenB * b.score / 100), 2.6, 1.3, 1.3, "F");
+        tinte(doc, fz);
+        schrift(doc, 7, "bold");
+        doc.text(zahlDe(b.score, 0), RAND + INHALT - 4, yy + 3, { align: "right" });
+      } else {
+        tinte(doc, C.zart);
+        schrift(doc, 6);
+        doc.text("–", RAND + INHALT - 4, yy + 3, { align: "right" });
+      }
+      yy += zeile;
+    });
+
+    /* Fusszeile der Karte: Stress-Kette und Verlauf */
+    var fy = y + H - 13;
+    haarlinie(doc, RAND + 3, fy - 3, RAND + INHALT - 3, C.linie, 0.12);
+    tinte(doc, C.matt);
+    schrift(doc, 5.6, "bold");
+    doc.text("STRESS-KETTE · " + erg.kette.anzahl + " VON " + erg.kette.von + " (AB " + erg.kette.schwelle + " PUNKTEN)", RAND + 4, fy + 1);
+    var kx = RAND + 4;
+    erg.kette.liste.forEach(function (c) {
+      fuell(doc, c.stress ? C.schlecht : C.neutralBalken);
+      doc.circle(kx + 1, fy + 5.3, 1.1, "F");
+      tinte(doc, c.stress ? C.tinte : C.zart);
+      schrift(doc, 6.4, c.stress ? "bold" : "normal");
+      doc.text(c.name, kx + 3.2, fy + 6.2);
+      kx += 3.2 + doc.getTextWidth(c.name) + 5;
+    });
+
+    var zp = S.zeitpunkte();
+    var hx = RAND + 76;
+    var hb = (INHALT - 76 - 4) / zp.length;
+    tinte(doc, C.matt);
+    schrift(doc, 5.6, "bold");
+    doc.text("VERLAUF DES BAROMETERS", hx, fy + 1);
+    zp.forEach(function (z, i) {
+      var e = S.berechne(z.datum);
+      var x = hx + i * hb;
+      tinte(doc, C.zart);
+      schrift(doc, 5.4);
+      doc.text(z.label, x, fy + 5);
+      if (e) {
+        var t = zahlDe(e.barometer, 0);
+        tinte(doc, STRESS_FARBE[e.zone.id]);
+        schrift(doc, 8, "bold");
+        doc.text(t, x, fy + 9.6);
+        var tb = doc.getTextWidth(t);
+        schrift(doc, 5.4);
+        doc.text(e.zone.name, x + tb + 1.4, fy + 9.4);
+      }
+    });
+    return y + H + 5;
+  }
+
+  /* =========================================================================
      11. Kapitalrotation (2 x 2)
      ========================================================================= */
+
+  /* Kapitalrotation: vier Linien (S&P 500, Ratio, Zaehler-ETF, Nenner-ETF),
+     alle auf 100 am Anfang des Zeitraums normiert (unterschiedliche Skalen).
+     Farben wie im TradingView-Vorbild: Zaehler gruen, Nenner rot. */
+  function zeichneRotationsChart(doc, x, y, breite, hoehe, k, punkte) {
+    var cfg = k.rotation;
+    var quelle = (window.QUELLEN || {})[k.quelle];
+    function map(schluessel) {
+      var r = quelle && quelle.reihen && quelle.reihen[schluessel];
+      var m = {};
+      if (r && r.punkte) { r.punkte.forEach(function (p) { m[p.d] = p.v; }); }
+      return m;
+    }
+    var fenster = letzteNMonate(punkte, 3);
+    var linien = [
+      { name: "S&P 500", farbe: C.tinte, m: map(cfg.spx), dick: 0.3 },
+      { name: k.titel, farbe: C.akzent, m: null, dick: 0.5 },
+      { name: cfg.zaehlerName, farbe: C.gut, m: map(cfg.zaehler), dick: 0.3 },
+      { name: cfg.nennerName, farbe: C.schlecht, m: map(cfg.nenner), dick: 0.3 }
+    ];
+    var alle = [];
+    linien.forEach(function (l) {
+      l.v = fenster.map(function (p) {
+        var w = l.m ? l.m[p.d] : p.v;
+        return (w === undefined || w === null) ? null : w;
+      });
+      var b0 = null;
+      for (var i = 0; i < l.v.length; i++) { if (l.v[i] !== null) { b0 = l.v[i]; break; } }
+      l.n = b0 === null ? null : l.v.map(function (w) { return w === null ? null : w / b0 * 100; });
+      if (l.n) { l.n.forEach(function (w) { if (w !== null) { alle.push(w); } }); }
+    });
+    if (!alle.length || fenster.length < 2) { return; }
+
+    var achsenB = 9, datumH = 4.5, plotB = breite - achsenB, plotH = hoehe - datumH;
+    var min = Math.min.apply(null, alle), max = Math.max.apply(null, alle);
+    var luft = (max - min) * 0.10 || 1;
+    var unten = min - luft, oben = max + luft, n = fenster.length;
+    function px(i) { return x + (i / (n - 1)) * plotB; }
+    function py(v) { return y + plotH - ((v - unten) / (oben - unten)) * plotH; }
+
+    [oben - luft, (min + max) / 2, unten + luft].forEach(function (w) {
+      haarlinie(doc, x, py(w), x + plotB, C.raster);
+      tinte(doc, C.zart);
+      schrift(doc, 5);
+      doc.text(zahlDe(w, 0), x + plotB + 1.5, py(w) + 1.2);
+    });
+    if (unten < 100 && oben > 100) {
+      stift(doc, C.bandNull);
+      doc.setLineWidth(0.2);
+      if (doc.setLineDashPattern) { doc.setLineDashPattern([1, 1], 0); }
+      doc.line(x, py(100), x + plotB, py(100));
+      if (doc.setLineDashPattern) { doc.setLineDashPattern([], 0); }
+    }
+    linien.forEach(function (l) {
+      if (!l.n) { return; }
+      stift(doc, l.farbe);
+      doc.setLineWidth(l.dick);
+      doc.setLineJoin("round");
+      doc.setLineCap("round");
+      var offen = false, letzt = null;
+      for (var i = 0; i < n; i++) {
+        if (l.n[i] === null) { offen = false; continue; }
+        if (offen && letzt !== null) { doc.line(px(letzt), py(l.n[letzt]), px(i), py(l.n[i])); }
+        offen = true; letzt = i;
+      }
+    });
+    var yD = y + plotH + 3.4;
+    tinte(doc, C.zart);
+    schrift(doc, 5);
+    doc.text(isoKurz(fenster[0].d), x, yD);
+    doc.text(isoKurz(fenster[Math.floor((n - 1) / 2)].d), x + plotB / 2, yD, { align: "center" });
+    doc.text(isoKurz(fenster[n - 1].d), x + plotB, yD, { align: "right" });
+  }
+
+  /* Legende (farbige Striche) rechtsbuendig auf Hoehe yy */
+  function zeichneRotationsLegende(doc, xRechts, yy, k) {
+    var namen = [["S&P 500", C.tinte], [k.titel, C.akzent], [k.rotation.zaehlerName, C.gut], [k.rotation.nennerName, C.schlecht]];
+    schrift(doc, 5.8);
+    var gesamt = 0;
+    namen.forEach(function (e) { gesamt += 5.5 + doc.getTextWidth(e[0]) + 3.5; });
+    var xx = xRechts - gesamt;
+    namen.forEach(function (e) {
+      stift(doc, e[1]);
+      doc.setLineWidth(0.6);
+      doc.line(xx, yy - 1, xx + 4.2, yy - 1);
+      tinte(doc, C.matt);
+      doc.text(e[0], xx + 5.5, yy);
+      xx += 5.5 + doc.getTextWidth(e[0]) + 3.5;
+    });
+  }
 
   function zeichneKapitalrotation(doc, y, liste) {
     var M = window.MOTOR;
@@ -874,10 +1093,15 @@
       var w = doc.getTextWidth(z.aktuell);
       tinte(doc, C.zart);
       schrift(doc, 6);
-      doc.text("Stand " + z.stand, x + 5 + w, yy + 13.5);
-      zeichneVerlauf(doc, x + 3, yy + 16.5, b - 6, 33, punkte, {
-        achsen: true, flaeche: true, format: k.format, art: "tag", monate: 3, maxPunkte: 160
-      });
+      if (!k.rotation) { doc.text("Stand " + z.stand, x + 5 + w, yy + 13.5); }
+      if (k.rotation) {
+        zeichneRotationsLegende(doc, x + b - 3, yy + 13.5, k);
+        zeichneRotationsChart(doc, x + 3, yy + 16.5, b - 6, 33, k, punkte);
+      } else {
+        zeichneVerlauf(doc, x + 3, yy + 16.5, b - 6, 33, punkte, {
+          achsen: true, flaeche: true, format: k.format, art: "tag", monate: 3, maxPunkte: 160
+        });
+      }
       /* Trendzeile */
       var tx = x + 3;
       ["1M", "3M", "6M"].forEach(function (n, j) {
@@ -1137,7 +1361,7 @@
     bereichBerechnen("zins", "Zinsen", kacheln(["FED_LEITZINS", "DFII10", "T10YIE"]));
 
     schritt("Plumbing");
-    await ladeDateien(["daten/plumbing.js", "bereiche/plumbing-kacheln.js"]);
+    await ladeDateien(["daten/plumbing.js", "daten/zinsen.js", "stress-score.js", "bereiche/plumbing-kacheln.js"]);
     bereichBerechnen("plumb", "Plumbing", kacheln(["VIXCLS", "BAMLH0A0HYM2", "SOFR_RATE", "SOFR_VOLUME",
       "RPONTSYD", "RRPONTSYD", "STLFSI4"]));
 
@@ -1178,11 +1402,9 @@
       /* Plumbing und Kapitalrotation auf eigener Seite */
       zustand.bereich = "Plumbing";
       y = neueSeite(doc);
+      y = zeichneBarometer(doc, y);
       y = zeichneTabelle(doc, y, "plumb", false);
-      tinte(doc, C.zart);
-      schrift(doc, 5.8);
-      doc.text("Stress-Barometer (Score) für das Finanzsystem folgt später.", RAND, y + 0.5);
-      y = zeichneKapitalrotation(doc, y + 8, rotation);
+      y = zeichneKapitalrotation(doc, y + 2, rotation);
 
       /* Regime auf eigener Seite */
       zustand.bereich = "Regime";

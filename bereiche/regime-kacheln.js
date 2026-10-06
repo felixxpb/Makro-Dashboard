@@ -34,6 +34,7 @@ window.KACHELN = [
   /* --- Konjunkturzyklus-Fruehindikatoren ----------------------------------- */
   {
     schluessel: "XLY_XLP", quelle: "regime", gruppe: "konjunktur",
+    rotation: { spx: "ETF_SPX", zaehler: "ETF_XLY", nenner: "ETF_XLP", zaehlerName: "XLY", nennerName: "XLP" },
     titel: "XLY/XLP",
     untertitel: "Nicht-Basiskonsum vs. Basiskonsum",
     frage: "Kaufen Konsumenten eher Luxus oder Grundbedarf?",
@@ -43,6 +44,7 @@ window.KACHELN = [
   },
   {
     schluessel: "IYT_XLU", quelle: "regime", gruppe: "konjunktur",
+    rotation: { spx: "ETF_SPX", zaehler: "ETF_IYT", nenner: "ETF_XLU", zaehlerName: "IYT", nennerName: "XLU" },
     titel: "IYT/XLU",
     untertitel: "Transportsektor vs. Versorgersektor",
     frage: "Wächst der Handel und die Produktion, oder dominiert der stabile Grundbedarf?",
@@ -52,6 +54,7 @@ window.KACHELN = [
   },
   {
     schluessel: "HYG_TLT", quelle: "regime", gruppe: "konjunktur",
+    rotation: { spx: "ETF_SPX", zaehler: "ETF_HYG", nenner: "ETF_TLT", zaehlerName: "HYG", nennerName: "TLT" },
     titel: "HYG/TLT",
     untertitel: "High-Yield-Unternehmensanleihen vs. lange Staatsanleihen",
     frage: "Suchen Investoren Risiko oder Sicherheit am Anleihenmarkt?",
@@ -61,6 +64,7 @@ window.KACHELN = [
   },
   {
     schluessel: "VUG_VTV", quelle: "regime", gruppe: "konjunktur",
+    rotation: { spx: "ETF_SPX", zaehler: "ETF_VUG", nenner: "ETF_VTV", zaehlerName: "VUG", nennerName: "VTV" },
     titel: "VUG/VTV",
     untertitel: "Large Cap Growth vs. Large Cap Value",
     frage: "Setzen Anleger auf zukünftiges Wachstum oder auf stabile, günstig bewertete Substanzwerte?",
