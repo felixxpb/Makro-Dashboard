@@ -126,6 +126,11 @@
       Math.abs(r).toLocaleString("de-DE", { minimumFractionDigits: stellen, maximumFractionDigits: stellen });
   }
 
+  // Geschuetzte Leerzeichen: Zahl, Einheit und Zusatz (z.B. "2,8 % YoY")
+  // bleiben beim Zeilenumbruch immer zusammen.
+  function nb(text) { return String(text).replace(/ /g, "\u00A0"); }
+  function einheitNb(k) { var e = einheitVon(k); return e ? "\u00A0" + e : ""; }
+
   function einheitVon(k) {
     if (k.einheitFest !== undefined) { return k.einheitFest; }
     if (k.format === "prozent") {
@@ -415,6 +420,9 @@
 
   var aktuelleKachel = null;
   var aktuellerZeitraum = "alle";
+  // Mausrad-Zoom im Detail-Chart: sichtbarer Ausschnitt als Indexbereich
+  // innerhalb des gewaehlten Zeitraums (n = Laenge der Reihe, fuer die er gilt).
+  var zoomFenster = null;
   var tabelleSichtbar = false;
   // Gewaehlter Monatsindex der BLS-CPI-Kategorie-Navigation: 0 = neuester
   // Monat, bis 11 = 12 Monate zurueck. Wird bei jedem oeffneDetail() auf 0
@@ -640,6 +648,24 @@
     var plotB = B - randL - randR, plotH = H - randO - randU;
     var art = frequenzArt(k);
 
+    // Zoom: nur den sichtbaren Ausschnitt zeichnen (Werteachse passt sich an).
+    var voll = punkte, vollZweit = zweit;
+    var gesamtN = voll.length;
+    var minAnz = Math.min(6, gesamtN);
+    if (zoomFenster && zoomFenster.n !== gesamtN) { zoomFenster = null; }
+    var von = zoomFenster ? zoomFenster.von : 0;
+    var bis = zoomFenster ? zoomFenster.bis : gesamtN - 1;
+    var gezoomt = von > 0 || bis < gesamtN - 1;
+    if (gezoomt) {
+      punkte = voll.slice(von, bis + 1);
+      if (zweit) {
+        var zKopie = {};
+        for (var zs in zweit) { if (Object.prototype.hasOwnProperty.call(zweit, zs)) { zKopie[zs] = zweit[zs]; } }
+        zKopie.punkte = zweit.punkte.slice(von, bis + 1);
+        zweit = zKopie;
+      }
+    }
+
     var alle = punkte.map(function (p) { return p.v; });
     // Leerstellen der zweiten Reihe muessen draussen bleiben, sonst wuerde
     // null in der Skalenrechnung wie eine Null wirken und die Achse verzerren.
@@ -719,7 +745,10 @@
       tx.setAttribute("text-anchor", "middle");
       tx.setAttribute("font-size", "11");
       tx.setAttribute("fill", "var(--text-stumm)");
-      tx.textContent = punkte[i].d.slice(0, 7).split("-").reverse().join("/");
+      // Bei starkem Zoom (wenige Punkte, nicht-monatliche Daten) mit Tag beschriften
+      tx.textContent = (gezoomt && punkte.length <= 90 && art !== "monat" && art !== "quartal")
+        ? punkte[i].d.slice(8, 10) + "." + punkte[i].d.slice(5, 7) + "." + punkte[i].d.slice(2, 4)
+        : punkte[i].d.slice(0, 7).split("-").reverse().join("/");
       svg.appendChild(tx);
     }
 
@@ -844,7 +873,69 @@
 
     svg.addEventListener("pointermove", function (e) { zeige(e.clientX); });
     svg.addEventListener("pointerleave", verstecke);
-    svg.addEventListener("pointerdown", function (e) { zeige(e.clientX); });
+    svg.addEventListener("pointerdown", function (e) {
+      zeige(e.clientX);
+      if (!gezoomt || e.button > 0) { return; }
+      // Ziehen verschiebt den Ausschnitt (nur wenn hineingezoomt)
+      var start = { x: e.clientX, von: von, bis: bis };
+      var breitePx = svg.getBoundingClientRect().width * (plotB / B);
+      svg.style.cursor = "grabbing";
+      function bewege(ev) {
+        var anz = start.bis - start.von;
+        var versatz = Math.round(-(ev.clientX - start.x) / breitePx * anz);
+        var nv = Math.max(0, Math.min(gesamtN - 1 - anz, start.von + versatz));
+        if (nv === (zoomFenster ? zoomFenster.von : 0)) { return; }
+        zoomFenster = { n: gesamtN, von: nv, bis: nv + anz };
+        zeichneGraph(k, voll, vollZweit);
+      }
+      function ende() {
+        window.removeEventListener("pointermove", bewege);
+        window.removeEventListener("pointerup", ende);
+        window.removeEventListener("pointercancel", ende);
+      }
+      window.addEventListener("pointermove", bewege);
+      window.addEventListener("pointerup", ende);
+      window.addEventListener("pointercancel", ende);
+    });
+
+    // Mausrad: hinein-/herauszoomen um die Mausposition (wie TradingView)
+    svg.addEventListener("wheel", function (e) {
+      if (gesamtN < 2) { return; }
+      e.preventDefault();
+      var kasten = svg.getBoundingClientRect();
+      var rel = (e.clientX - kasten.left) / kasten.width * B;
+      var anteil = Math.max(0, Math.min(1, (rel - randL) / plotB));
+      var anz = bis - von;
+      var mitte = von + anteil * anz;
+      var neu = Math.round(anz * (e.deltaY < 0 ? 0.8 : 1.25));
+      if (e.deltaY < 0 && neu >= anz) { neu = anz - 1; }
+      if (e.deltaY > 0 && neu <= anz) { neu = anz + 1; }
+      neu = Math.max(minAnz - 1, neu);
+      if (neu >= gesamtN - 1) { zoomFenster = null; }
+      else {
+        var nv = Math.round(mitte - anteil * neu);
+        nv = Math.max(0, Math.min(gesamtN - 1 - neu, nv));
+        zoomFenster = { n: gesamtN, von: nv, bis: nv + neu };
+      }
+      zeichneGraph(k, voll, vollZweit);
+    }, { passive: false });
+    svg.addEventListener("dblclick", function () {
+      if (!gezoomt) { return; }
+      zoomFenster = null;
+      zeichneGraph(k, voll, vollZweit);
+    });
+    svg.style.touchAction = "pan-y";
+    if (gezoomt) { svg.style.cursor = "grab"; }
+
+    if (gezoomt) {
+      var zurueck = el("button", "zoom-zurueck", "Zoom zurücksetzen");
+      zurueck.type = "button";
+      zurueck.addEventListener("click", function () {
+        zoomFenster = null;
+        zeichneGraph(k, voll, vollZweit);
+      });
+      behaelter.appendChild(zurueck);
+    }
 
     // Legende nur bei zwei Reihen
     var legende = document.getElementById("graphLegende");
@@ -1268,6 +1359,7 @@
       }
     }
 
+    zoomFenster = null;
     zeichneGraph(k, punkte, zweit);
     baueTabelle(k, punkte, zweit);
   }
@@ -1313,14 +1405,19 @@
   // Vergleichswert mit Datum, Differenz farbig nach Vorzeichen (nicht nach
   // k.richtung - siehe vorzeichenKlasse).
   function trendKennwertInhalt(k, letzter, punkt, art) {
-    var einheit = einheitVon(k) ? " " + einheitVon(k) : "";
+    var einheit = einheitNb(k);
     var frag = document.createDocumentFragment();
-    frag.appendChild(document.createTextNode(
-      zahl(letzter.v, k.format) + einheit + " · " + zahl(punkt.v, k.format) + einheit +
-      " (" + datumText(punkt.d, art) + ") "));
+    // Zeile 1: aktueller Wert und Vergleichswert. Jeder Wert samt Einheit
+    // bleibt zusammen (kein Umbruch zwischen Zahl, % und YoY).
+    frag.appendChild(el("span", "kw-zeile", nb(zahl(letzter.v, k.format) + einheit)));
+    frag.appendChild(document.createTextNode(" · "));
+    frag.appendChild(el("span", "kw-zeile", nb(zahl(punkt.v, k.format) + einheit)));
+    frag.appendChild(document.createTextNode(" "));
+    frag.appendChild(el("span", "kw-zeile", nb("(" + datumText(punkt.d, art) + ")")));
+    // Zeile 2: Veraenderung samt Einheit, farbig nach Vorzeichen.
     var diff = letzter.v - punkt.v;
-    frag.appendChild(el("span", vorzeichenKlasse(gerundet(diff, k.format)),
-      veraenderungText(diff, k.format) + einheit));
+    frag.appendChild(el("span", "kw-aenderung " + vorzeichenKlasse(gerundet(diff, k.format)),
+      nb(veraenderungText(diff, k.format) + einheit)));
     return frag;
   }
 
@@ -1347,14 +1444,14 @@
     document.getElementById("steuerzeile").hidden = punkte.length < 2;
     if (punkte.length >= 2) {
       var letzter = punkte[punkte.length - 1];
-      var einheit = einheitVon(k) ? " " + einheitVon(k) : "";
+      var einheit = einheitNb(k);
       if (k.pmiFarbe) {
         var aktuellFrag = document.createDocumentFragment();
         aktuellFrag.appendChild(el("span", pmiKlasse(letzter.v), zahl(letzter.v, k.format)));
         aktuellFrag.appendChild(document.createTextNode(einheit));
         kw.appendChild(kennwert("Aktuell", aktuellFrag));
       } else {
-        kw.appendChild(kennwert("Aktuell", zahl(letzter.v, k.format) + einheit));
+        kw.appendChild(kennwert("Aktuell", nb(zahl(letzter.v, k.format) + einheit)));
       }
 
       var stufe = stufeText(k, letzter.v);
@@ -1369,7 +1466,7 @@
         var zp = punkteVon(zk);
         if (zp.length) {
           kw.appendChild(kennwert(k.zweitreihe.kennwert,
-            zahl(zp[zp.length - 1].v, k.format) + " " + einheitVon(zk)));
+            nb(zahl(zp[zp.length - 1].v, k.format) + " " + einheitVon(zk))));
         }
       }
 
@@ -1390,8 +1487,8 @@
         if (!zpunkte.length) { return; }
         var einheitZusatz = einheitVon(zkonf);
         kw.appendChild(kennwert(zusatz.titel,
-          zahl(zpunkte[zpunkte.length - 1].v, zkonf.format) +
-          (einheitZusatz ? " " + einheitZusatz : "")));
+          nb(zahl(zpunkte[zpunkte.length - 1].v, zkonf.format) +
+          (einheitZusatz ? " " + einheitZusatz : ""))));
       });
 
       // 1/3/6-Monats-Trend: Vergleichspunkt ueber das Datum gesucht, nicht

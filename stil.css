@@ -458,6 +458,26 @@ a.bereich-kachel:focus-visible { box-shadow: 0 0 0 2px var(--serie-1); }
   font-size: 18px;
   font-weight: 600;
 }
+/* Trend-Kennwerte: Wert samt Einheit bleibt zusammen, die Veraenderung
+   steht immer in einer eigenen Zeile darunter. */
+.kw-zeile { white-space: nowrap; }
+.kw-aenderung { display: block; margin-top: 2px; white-space: nowrap; }
+
+/* Mausrad-Zoom im Detail-Chart */
+.zoom-zurueck {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  font: inherit;
+  font-size: 11px;
+  padding: 3px 9px;
+  border-radius: 6px;
+  border: 1px solid var(--achse);
+  background: var(--flaeche);
+  color: var(--text-sekundaer);
+  cursor: pointer;
+}
+.zoom-zurueck:hover { border-color: var(--text-sekundaer); }
 
 /* Steuerzeile: eine Reihe ueber dem Graph */
 .steuerzeile {
