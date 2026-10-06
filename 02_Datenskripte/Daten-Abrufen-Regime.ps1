@@ -139,6 +139,9 @@ function Hole-Yahoo([string]$symbol, [string]$titel, [string]$id) {
 }
 
 $etfRoh = @{}
+# S&P 500 (Index) fuer die Kapitalrotation: nur Anzeige, kein Ratio
+$spx = Hole-Yahoo "^GSPC" "S&P 500" "SPX"
+Start-Sleep -Milliseconds 300
 foreach ($s in @(
   @{ sym = "XLY"; titel = "XLY" }, @{ sym = "XLP"; titel = "XLP" },
   @{ sym = "IYT"; titel = "IYT" }, @{ sym = "XLU"; titel = "XLU" },
@@ -178,6 +181,11 @@ $ergebnis["HYG_TLT"] = Berechne-Ratio "HYG" "TLT" "HYG/TLT" "HYG_TLT"
 Write-Host ("HYG/TLT: {0} Werte, zuletzt {1} = {2}" -f $ergebnis["HYG_TLT"].punkte.Count, $ergebnis["HYG_TLT"].punkte[-1].d, $ergebnis["HYG_TLT"].punkte[-1].v)
 $ergebnis["VUG_VTV"] = Berechne-Ratio "VUG" "VTV" "VUG/VTV" "VUG_VTV"
 Write-Host ("VUG/VTV: {0} Werte, zuletzt {1} = {2}" -f $ergebnis["VUG_VTV"].punkte.Count, $ergebnis["VUG_VTV"].punkte[-1].d, $ergebnis["VUG_VTV"].punkte[-1].v)
+
+# Einzel-Reihen fuer die Kapitalrotation (Linien im Detail-Chart, einzeln abschaltbar).
+# Schluessel "ETF_<Symbol>", dazu "ETF_SPX". Die Ratio-Kacheln bleiben unveraendert.
+$ergebnis["ETF_SPX"] = $spx
+foreach ($sym in $etfRoh.Keys) { $ergebnis["ETF_$sym"] = $etfRoh[$sym] }
 
 # --- Regime-Einstufung -------------------------------------------------------
 # Die Einstufung (Bull/Bear Steepener/Flattener, Twist) wird bewusst NICHT

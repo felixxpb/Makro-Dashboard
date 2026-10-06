@@ -165,10 +165,9 @@ Write-Host ("Reihen: {0}" -f $ergebnis.Count)
 # items 3,4 % / Energy 16,3 % / Shelter 3,0 %) stimmen exakt mit den Werten
 # der BLS-Chartseite ueberein.
 
-function Get-BlsCpiKategorien() {
-  # BLS-Serienkennungen (CPI-U, US City Average, nicht saisonbereinigt "CUUR"),
-  # Item-Codes entsprechen den Kategorien der BLS-Chartseite, Stand 2026-09-21.
-  $kategorien = @(
+# BLS-Serienkennungen CPI-U (US City Average, nicht saisonbereinigt "CUUR"),
+# Item-Codes entsprechen den Kategorien der BLS-Chartseite, Stand 2026-09-21.
+$cpiKategorien = @(
     @{ key = "alleWaren";        name = "All items";                                    id = "CUUR0000SA0" }
     @{ key = "nahrung";          name = "Food";                                         id = "CUUR0000SAF1" }
     @{ key = "nahrungZuhause";   name = "Food at home";                                 id = "CUUR0000SAF11" }
@@ -187,6 +186,35 @@ function Get-BlsCpiKategorien() {
     @{ key = "medizinDienst";    name = "Medical care services";                        id = "CUUR0000SAM2" }
     @{ key = "bildung";          name = "Education and communication";                  id = "CUUR0000SAE" }
   )
+$cpiUrl = "https://www.bls.gov/charts/consumer-price-index/consumer-price-index-by-category-line-chart.htm"
+
+# PPI-Kategorien (Entscheidung Felix, 2026-10-06): dieselben Kategorien wie beim CPI.
+# Quelle ebenfalls die oeffentliche BLS-API (PPI-Serien, nicht saisonbereinigt "WPU"
+# bzw. Industrie "PCU"). Nicht jede CPI-Kategorie hat ein exaktes PPI-Gegenstueck,
+# die Zuordnung steht in 03_Doku/Datenquellen_Inflation.md Abschnitt 6.
+# "Food away from home" hat kein PPI-Pendant (Gastronomie wird im PPI nicht erfasst)
+# und entfaellt deshalb.
+$ppiKategorien = @(
+  @{ key = "alleWaren";      name = "All items (Final Demand)";                       id = "WPUFD4" }
+  @{ key = "nahrung";        name = "Food (Final Demand Foods)";                       id = "WPUFD411" }
+  @{ key = "nahrungZuhause"; name = "Food at home (Finished consumer foods)";          id = "WPUFD4111" }
+  @{ key = "energie";        name = "Energy (Final Demand Energy)";                    id = "WPUFD412" }
+  @{ key = "benzin";         name = "Gasoline";                                        id = "WPU0571" }
+  @{ key = "strom";          name = "Electricity (Residential electric power)";        id = "WPU0541" }
+  @{ key = "erdgas";         name = "Natural gas (Residential natural gas)";           id = "WPU0551" }
+  @{ key = "core";           name = "All items less food and energy";                  id = "WPUFD49104" }
+  @{ key = "coreWaren";      name = "Core goods (Goods less foods and energy)";        id = "WPUFD413" }
+  @{ key = "bekleidung";     name = "Apparel";                                         id = "WPU0381" }
+  @{ key = "neuwagen";       name = "New vehicles (Motor vehicles)";                   id = "WPU1411" }
+  @{ key = "medizinWaren";   name = "Medical care commodities (Pharmaceuticals)";      id = "WPU0638" }
+  @{ key = "coreDienst";     name = "Core services (Services less trade, transport)";  id = "WPUFD421" }
+  @{ key = "wohnen";         name = "Shelter (Traveler accommodation)";                id = "PCU721110721110" }
+  @{ key = "medizinDienst";  name = "Medical care services (Offices of physicians)";   id = "PCU6211--6211--" }
+  @{ key = "bildung";        name = "Education and communication (Telecommunications)"; id = "PCU517---517---" }
+)
+$ppiUrl = "https://www.bls.gov/ppi/"
+
+function Get-BlsKategorien([array]$kategorien, [string]$quelleUrl) {
 
   $ids = @($kategorien | ForEach-Object { $_.id })
   $antwortBody = (@{ seriesid = $ids } | ConvertTo-Json)
@@ -253,14 +281,14 @@ function Get-BlsCpiKategorien() {
   return [ordered]@{
     kategorien = @($kategorien | ForEach-Object { [ordered]@{ key = $_.key; name = $_.name } })
     monate     = $letzte13
-    quelleUrl  = "https://www.bls.gov/charts/consumer-price-index/consumer-price-index-by-category-line-chart.htm"
+    quelleUrl  = $quelleUrl
   }
 }
 
 Write-Host ""
 Write-Host "Hole CPI-Kategorien von BLS ..." -NoNewline
 try {
-  $bls = Get-BlsCpiKategorien
+  $bls = Get-BlsKategorien $cpiKategorien $cpiUrl
   $blsPaket = [ordered]@{
     bereich    = "Inflation - CPI-Kategorien (BLS, nur CPI Headline)"
     erzeugt    = (Get-Date).ToString("yyyy-MM-dd HH:mm")
@@ -280,4 +308,28 @@ try {
   Write-Host " FEHLER"
   Write-Host ("ACHTUNG: CPI-Kategorien von BLS konnten nicht abgerufen werden: {0}" -f $_.Exception.Message)
   Write-Host "Die vorhandene daten/cpi-kategorien.js (falls vorhanden) bleibt unveraendert stehen."
+}
+
+Write-Host ""
+Write-Host "Hole PPI-Kategorien von BLS ..." -NoNewline
+try {
+  $blsP = Get-BlsKategorien $ppiKategorien $ppiUrl
+  $ppiPaket = [ordered]@{
+    bereich    = "Inflation - PPI-Kategorien (BLS, PPI Final Demand)"
+    erzeugt    = (Get-Date).ToString("yyyy-MM-dd HH:mm")
+    quelle     = "U.S. Bureau of Labor Statistics (PPI)"
+    quelleUrl  = $blsP.quelleUrl
+    abgerufen  = (Get-Date).ToString("yyyy-MM-dd HH:mm")
+    kategorien = $blsP.kategorien
+    monate     = $blsP.monate
+  }
+  $ppiJson = $ppiPaket | ConvertTo-Json -Depth 10 -Compress
+  $ppiZiel = Join-Path $zielOrdner "ppi-kategorien.js"
+  [System.IO.File]::WriteAllText($ppiZiel, "window.PPI_KATEGORIEN_DATEN = $ppiJson;", (New-Object System.Text.UTF8Encoding($false)))
+  Write-Host (" {0} Monate, {1} Kategorien, zuletzt {2}" -f $blsP.monate.Count, $blsP.kategorien.Count, $blsP.monate[$blsP.monate.Count - 1].d)
+  Write-Host ("Datendatei geschrieben: {0}" -f $ppiZiel)
+} catch {
+  Write-Host " FEHLER"
+  Write-Host ("ACHTUNG: PPI-Kategorien von BLS konnten nicht abgerufen werden: {0}" -f $_.Exception.Message)
+  Write-Host "Die vorhandene daten/ppi-kategorien.js (falls vorhanden) bleibt unveraendert stehen."
 }
