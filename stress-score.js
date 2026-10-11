@@ -7,7 +7,7 @@
    Aufbau je Kennzahl: Score 0-100 = 50 % Wert + 25 % Geschwindigkeit
    + 25 % Trend. Jeder Faktor wird linear zwischen "0 Punkte" und "100 Punkte"
    umgerechnet (ausserhalb abgeschnitten). Nur die Stressrichtung zaehlt.
-   Barometer = gewichtete Summe aller Kennzahlen x Hebel 1,3, bei 100 gedeckelt.
+   Barometer = gewichtete Summe aller Kennzahlen x Hebel (1,3; SOFR 1,6), bei 100 gedeckelt.
    Fehlt eine Kennzahl (zu wenig Historie), werden die Gewichte der uebrigen
    auf 100 % hochgerechnet.
 
@@ -18,7 +18,8 @@
 (function () {
   "use strict";
 
-  var HEBEL = 1.3;
+  var HEBEL = 1.3;           /* Standard-Hebel; einzelne Kennzahlen koennen ueber "hebel" abweichen (SOFR 1,6) */
+  function hebelVon(k) { return k.hebel || HEBEL; }
   var KETTE_SCHWELLE = 40;   /* Einzel-Score, ab dem eine Kennzahl der Stress-Kette als "zeigt Stress" gilt */
 
   /* Zonen rein beschreibend (CLAUDE.md Abschnitt 5), Farben in stil.css (--st-1 bis --st-5; text = lesbare Schriftfarbe auf dunklem Grund) */
@@ -114,6 +115,9 @@
     return s;
   }
 
+  /* skala (Felix, 2026-10-11): Verkleinerungsfaktor fuer ALLE Schwellen der Kennzahl
+     (Wert, Tempo, Trend, jeweils Start- und 100-Punkte-Grenze). Die Zahlen unten sind die
+     urspruenglichen Schwellen, die Berechnung multipliziert sie mit skala. 1 = unveraendert. */
   /* --- Kennzahlen: Schwellen von Felix ----------------------------------- */
   /* tempo = Geschwindigkeit (kurze Zeitraeume), trend = lange Zeitraeume;
      Schluessel = Zeitraum in Beobachtungen (Handelstage, FFSI: Wochen),
@@ -122,37 +126,43 @@
   var KENNZAHLEN = [
     { id: "vix", name: "VIX", gruppe: "markt", gewicht: 17, serie: "vix",
       lang: "VIX (Absicherung am Aktienmarkt)", einheit: "", dez: 1,
-      wert: function (v, i) { return pt(Math.floor(v[i]) - 16, 0, 14); },
+      skala: 0.5,
+      wert: function (v, i, f) { return pt(Math.floor(v[i]) - 16, 0, 14 * f); },
       tempo: { 8: [2, 7], 14: [2, 8] },
       trend: { 20: [2, 9], 40: [3, 11], 60: [4, 12.5] } },
 
     { id: "hy", name: "HY-Spread", gruppe: "markt", gewicht: 16, serie: "hy",
       lang: "High-Yield-Spread (ICE BofA)", einheit: " %", dez: 2,
-      wert: function (v, i) { return pt(v[i], 3, 5); },
+      skala: 0.5,
+      wert: function (v, i, f) { return pt(v[i], 3, 3 + 2 * f); },
       tempo: { 8: [0.10, 0.30], 14: [0.15, 0.40] },
       trend: { 20: [0.15, 0.50], 40: [0.20, 0.70], 60: [0.20, 0.90] } },
 
     { id: "ffsi", name: "FED Stress Index", gruppe: "markt", gewicht: 10, serie: "ffsi",
       lang: "FED Financial Stress Index (wöchentlich)", einheit: "", dez: 2,
-      wert: function (v, i) { return pt(v[i], 0, 1); },
+      skala: 0.5,
+      wert: function (v, i, f) { return pt(v[i], 0, f); },
       tempo: { 2: [0.15, 0.45], 3: [0.15, 0.50] },
       trend: { 4: [0.20, 0.55], 8: [0.20, 0.75], 12: [0.25, 0.85] } },
 
-    { id: "sofr", name: "SOFR", gruppe: "funding", gewicht: 20, serie: "sofr",
+    { id: "sofr", name: "SOFR", gruppe: "funding", gewicht: 20, hebel: 1.6, serie: "sofr",
       lang: "SOFR-Abstand zum FED-Leitzins", einheit: " pp", dez: 2, schnitt: true,
-      wert: function (v, i) { return pt(v[i], 0, 0.30); },
+      skala: 0.3,
+      wert: function (v, i, f) { return pt(v[i], 0, 0.30 * f); },
       tempo: { 8: [0.02, 0.06], 14: [0.02, 0.07] },
       trend: { 20: [0.02, 0.06], 40: [0.03, 0.08], 60: [0.03, 0.09] } },
 
     { id: "rel", name: "SOFR-Volumen", gruppe: "funding", gewicht: 5, serie: "rel",
       lang: "SOFR-Relation (Abstand je 1.000 Mrd. Volumen)", einheit: " bp", dez: 1, schnitt: true,
-      wert: function (v, i) { return pt(v[i], 0, 10); },
+      skala: 0.3,
+      wert: function (v, i, f) { return pt(v[i], 0, 10 * f); },
       tempo: { 8: [1, 4], 14: [1, 4.5] },
       trend: { 20: [1, 4.5], 40: [1.5, 5.5], 60: [1.5, 5.5] } },
 
     { id: "repo", name: "REPO", gruppe: "funding", gewicht: 16, serie: "repo",
       lang: "REPO (Fed-Repo-Nutzung)", einheit: " Mrd.", dez: 1, schnitt: true,
-      wert: function (v, i) { return pt(v[i], 0, 25); },
+      skala: 0.42,
+      wert: function (v, i, f) { return pt(v[i], 0, 25 * f); },
       tempo: { 3: [0.5, 8], 5: [0.5, 10] },
       trend: { 8: [0.5, 12], 14: [0.5, 15], 20: [0.5, 15] } },
 
@@ -160,20 +170,21 @@
       lang: "ON RRP (bei der FED geparktes Geld)", einheit: " Mrd.", dez: 1, schnitt: true,
       minIndex: 20,
       /* Wert = 5-Tage-Schnitt minus gleitender 20-Tage-Durchschnitt; Rueckgang = 0 */
-      wert: function (v, i) {
+      skala: 0.5,
+      wert: function (v, i, f) {
         var s = 0;
         for (var j = i - 20; j < i; j++) { s += v[j]; }
-        return pt(v[i] - s / 20, 5, 100);
+        return pt(v[i] - s / 20, 5 * f, 100 * f);
       },
       tempo: { 8: [5, 100], 14: [5, 150] },
       trend: { 20: [5, 150], 40: [5, 200], 60: [5, 250] } }
   ];
 
-  function mittelFaktor(v, i, fenster) {
+  function mittelFaktor(v, i, fenster, f) {
     var summe = 0, anzahl = 0;
     for (var n in fenster) {
       var z = fenster[n];
-      summe += pt(v[i] - v[i - Number(n)], z[0], z[1]);
+      summe += pt(v[i] - v[i - Number(n)], z[0] * f, z[1] * f);
       anzahl++;
     }
     return summe / anzahl;
@@ -193,9 +204,10 @@
     if (!s) { return null; }
     var i = indexBis(s.d, datum);
     if (i < maxFenster(k)) { return null; }
-    var wert = k.wert(s.v, i);
-    var tempo = mittelFaktor(s.v, i, k.tempo);
-    var trend = mittelFaktor(s.v, i, k.trend);
+    var f = k.skala;
+    var wert = k.wert(s.v, i, f);
+    var tempo = mittelFaktor(s.v, i, k.tempo, f);
+    var trend = mittelFaktor(s.v, i, k.trend, f);
     return {
       score: 0.5 * wert + 0.25 * tempo + 0.25 * trend,
       wert: wert, tempo: tempo, trend: trend,
@@ -207,17 +219,21 @@
 
   function berechne(datum) {
     var serien = vorbereiten();
-    var liste = [], summeG = 0, summeP = 0;
+    var liste = [], summeG = 0, summeP = 0, summeH = 0;
 
     KENNZAHLEN.forEach(function (k) {
       var r = kennzahlScore(k, serien, datum);
       liste.push({ k: k, r: r });
-      if (r) { summeG += k.gewicht; summeP += k.gewicht * r.score; }
+      if (r) {
+        summeG += k.gewicht;
+        summeP += k.gewicht * r.score;
+        summeH += k.gewicht * r.score * hebelVon(k);
+      }
     });
     if (!summeG) { return null; }
 
     var summe = summeP / summeG;
-    var barometer = Math.min(100, summe * HEBEL);
+    var barometer = Math.min(100, summeH / summeG);
 
     var bereiche = liste.map(function (e) {
       var k = e.k, r = e.r;
@@ -229,8 +245,9 @@
         wert: r ? r.wert : null, tempo: r ? r.tempo : null, trend: r ? r.trend : null,
         roh: r ? r.roh : null, stand: r ? r.stand : null,
         /* Beitrag in Barometer-Punkten (Hebel eingerechnet, vor der Deckelung) */
-        beitrag: r ? (k.gewicht / summeG) * r.score * HEBEL : 0,
-        maxBeitrag: r ? (k.gewicht / summeG) * 100 * HEBEL : 0
+        hebel: hebelVon(k),
+        beitrag: r ? (k.gewicht / summeG) * r.score * hebelVon(k) : 0,
+        maxBeitrag: r ? (k.gewicht / summeG) * 100 * hebelVon(k) : 0
       };
     });
 

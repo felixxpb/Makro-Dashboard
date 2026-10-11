@@ -252,9 +252,9 @@
     var p1 = el("p", null,
       "Jede Kennzahl bekommt einen Score von 0 bis 100: 50 % Wert (wo steht sie), 25 % Trend (Veränderung über 20, 40 und 60 Tage) " +
       "und 25 % Tempo (Veränderung über 8 und 14 Tage). Beim FFSI zählen Wochen statt Tage. Es zählt nur die Stressrichtung, " +
-      "Entspannung gibt 0 Punkte. Die Schwellen legte Felix anhand der Historie fest (Dokumentation: Stress_Barometer_Entwurf).");
+      "Entspannung gibt 0 Punkte. Die Schwellen legte Felix anhand der Historie fest und senkte sie am 11.10.2026 für alle drei Bestandteile ab (Dokumentation: Stress_Barometer_Entwurf).");
     var p2 = el("p", null,
-      "Barometer = gewichtete Summe der Scores × " + zahl(STRESS.HEBEL, 1) + ", bei 100 gedeckelt. Gewichte: " +
+      "Barometer = gewichtete Summe der Scores × " + zahl(STRESS.HEBEL, 1) + " (SOFR × 1,6), bei 100 gedeckelt. Gewichte: " +
       STRESS.KENNZAHLEN.map(function (k) { return k.name + " " + k.gewicht + " %"; }).join(", ") + ".");
     var p3 = el("p", null,
       "Zonen: " + STRESS.ZONEN.map(function (z) { return z.von + "–" + z.bis + " " + z.name; }).join(", ") +
