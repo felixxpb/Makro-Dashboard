@@ -15,9 +15,13 @@
   if (!wurzel || !window.STRESS) { return; }
 
   var STRESS = window.STRESS;
-  var zeitpunkte = STRESS.zeitpunkte();
-  var auswahl = "heute";
+  var heute = STRESS.stand();
+  var auswahl = heute;          /* gewaehlter Tag (ISO) */
+  var kalenderOffen = false;
+  var anzeigeMonat = heute ? heute.slice(0, 7) : null;   /* "JJJJ-MM" */
   var fokusAufKnopf = false;   /* nach Klick Fokus erhalten (Tastaturbedienung) */
+  var MONATE = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
+  var WOCHENTAGE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
 
   /* --- Helfer ------------------------------------------------------------ */
 
@@ -218,29 +222,132 @@
 
   /* --- Historie-Knoepfe -------------------------------------------------- */
 
-  function baueKnoepfe() {
+  function zweiStellig(n) { return (n < 10 ? "0" : "") + n; }
+
+  function monatVerschieben(ym, delta) {
+    var g = Number(ym.slice(0, 4)) * 12 + Number(ym.slice(5, 7)) - 1 + delta;
+    var j = Math.floor(g / 12);
+    return j + "-" + zweiStellig(g - j * 12 + 1);
+  }
+
+  function baueKalender() {
+    var frueh = STRESS.fruehesterTag();
+    var minMonat = frueh ? frueh.slice(0, 7) : anzeigeMonat;
+    var maxMonat = heute.slice(0, 7);
+
+    var kal = el("div", "bm-kalender");
+    kal.setAttribute("role", "dialog");
+    kal.setAttribute("aria-label", "Kalender mit Tageswerten");
+
+    var kopf = el("div", "bm-kal-kopf");
+    var zurueck = el("button", "bm-kal-nav", "‹");
+    zurueck.type = "button";
+    zurueck.setAttribute("aria-label", "Vorheriger Monat");
+    zurueck.setAttribute("data-fokus", "nav-zurueck");
+    zurueck.disabled = anzeigeMonat <= minMonat;
+    zurueck.addEventListener("click", function () {
+      anzeigeMonat = monatVerschieben(anzeigeMonat, -1); fokusAufKnopf = "nav-zurueck"; zeichne();
+    });
+    var vor = el("button", "bm-kal-nav", "›");
+    vor.type = "button";
+    vor.setAttribute("aria-label", "Nächster Monat");
+    vor.setAttribute("data-fokus", "nav-vor");
+    vor.disabled = anzeigeMonat >= maxMonat;
+    vor.addEventListener("click", function () {
+      anzeigeMonat = monatVerschieben(anzeigeMonat, 1); fokusAufKnopf = "nav-vor"; zeichne();
+    });
+    kopf.appendChild(zurueck);
+    kopf.appendChild(el("span", "bm-kal-monat",
+      MONATE[Number(anzeigeMonat.slice(5, 7)) - 1] + " " + anzeigeMonat.slice(0, 4)));
+    kopf.appendChild(vor);
+    kal.appendChild(kopf);
+
+    var raster = el("div", "bm-kal-raster");
+    WOCHENTAGE.forEach(function (w) { raster.appendChild(el("span", "bm-kal-wt", w)); });
+
+    var jahr = Number(anzeigeMonat.slice(0, 4)), monat = Number(anzeigeMonat.slice(5, 7));
+    var ersterWt = (new Date(Date.UTC(jahr, monat - 1, 1)).getUTCDay() + 6) % 7;   /* Montag = 0 */
+    var tage = new Date(Date.UTC(jahr, monat, 0)).getUTCDate();
+    for (var l = 0; l < ersterWt; l++) { raster.appendChild(el("span", "bm-kal-leer")); }
+
+    for (var t = 1; t <= tage; t++) {
+      (function (tag) {
+        var iso = anzeigeMonat + "-" + zweiStellig(tag);
+        var e = (iso <= heute && (!frueh || iso >= frueh)) ? STRESS.berechne(iso) : null;
+        var zelle = el("button", "bm-tag");
+        zelle.type = "button";
+        zelle.appendChild(el("span", "bm-tag-nr", String(tag)));
+        if (e) {
+          var istHandelstag = STRESS.hatBeobachtung(iso);
+          zelle.appendChild(el("span", "bm-tag-wert", zahl(e.barometer, 0)));
+          zelle.style.setProperty("--zone", e.zone.farbe);
+          if (!istHandelstag) { zelle.className += " bm-tag-ohne"; }
+          if (iso === auswahl) { zelle.className += " bm-tag-aktiv"; zelle.setAttribute("aria-pressed", "true"); }
+          zelle.title = datumText(iso) + ": " + zahl(e.barometer, 0) + " · " + e.zone.name +
+            (istHandelstag ? "" : " (kein neuer Handelstag, Stand des letzten Handelstags)");
+          zelle.setAttribute("aria-label", datumText(iso) + ", Barometer " + zahl(e.barometer, 0) + ", " + e.zone.name);
+          zelle.addEventListener("click", function () {
+            auswahl = iso; kalenderOffen = false; fokusAufKnopf = "kachel"; zeichne();
+          });
+        } else {
+          zelle.disabled = true;
+          zelle.className += " bm-tag-leer";
+          zelle.appendChild(el("span", "bm-tag-wert", "–"));
+        }
+        raster.appendChild(zelle);
+      })(t);
+    }
+    kal.appendChild(raster);
+    kal.appendChild(el("p", "bm-kal-hinweis",
+      "Gedämpfte Tage (Wochenende, Feiertag) zeigen den Wert des letzten Handelstags."));
+    return kal;
+  }
+
+  function baueKnoepfe(e) {
     var leiste = el("div", "bm-historie");
     leiste.setAttribute("role", "group");
     leiste.setAttribute("aria-label", "Zeitpunkt wählen");
-    zeitpunkte.forEach(function (z) {
-      var e = STRESS.berechne(z.datum);
-      var knopf = el("button", "bm-knopf");
-      knopf.type = "button";
-      knopf.setAttribute("aria-pressed", z.id === auswahl ? "true" : "false");
-      knopf.appendChild(el("span", "bm-knopf-label", z.label));
-      var wertZeile = el("span", "bm-knopf-wert");
-      if (e) {
-        var punkt = el("span", "bm-knopf-punkt");
-        punkt.style.background = e.zone.farbe;
-        wertZeile.appendChild(punkt);
-        wertZeile.appendChild(document.createTextNode(zahl(e.barometer, 0) + " · " + e.zone.name));
-      } else {
-        wertZeile.textContent = "keine Daten";
-      }
-      knopf.appendChild(wertZeile);
-      knopf.addEventListener("click", function () { auswahl = z.id; fokusAufKnopf = true; zeichne(); });
-      leiste.appendChild(knopf);
+
+    var eh = STRESS.berechne(heute);
+    var aktuell = el("button", "bm-knopf");
+    aktuell.type = "button";
+    aktuell.setAttribute("aria-pressed", auswahl === heute ? "true" : "false");
+    aktuell.setAttribute("data-fokus", "aktuell");
+    aktuell.appendChild(el("span", "bm-knopf-label", "Aktuell"));
+    var aw = el("span", "bm-knopf-wert");
+    if (eh) {
+      var p1 = el("span", "bm-knopf-punkt");
+      p1.style.background = eh.zone.farbe;
+      aw.appendChild(p1);
+      aw.appendChild(document.createTextNode(zahl(eh.barometer, 0) + " · " + eh.zone.name));
+    }
+    aktuell.appendChild(aw);
+    aktuell.addEventListener("click", function () {
+      auswahl = heute; anzeigeMonat = heute.slice(0, 7); kalenderOffen = false;
+      fokusAufKnopf = "aktuell"; zeichne();
     });
+    leiste.appendChild(aktuell);
+
+    var kachel = el("button", "bm-knopf bm-knopf-kal");
+    kachel.type = "button";
+    kachel.setAttribute("aria-expanded", kalenderOffen ? "true" : "false");
+    kachel.setAttribute("aria-pressed", auswahl !== heute ? "true" : "false");
+    kachel.setAttribute("data-fokus", "kachel");
+    kachel.appendChild(el("span", "bm-knopf-label", "Kalender · Verlauf"));
+    var kw = el("span", "bm-knopf-wert");
+    var p2 = el("span", "bm-knopf-punkt");
+    p2.style.background = e.zone.farbe;
+    kw.appendChild(p2);
+    kw.appendChild(document.createTextNode(datumText(e.datum) + " · " + zahl(e.barometer, 0) + " · " + e.zone.name));
+    kachel.appendChild(kw);
+    kachel.addEventListener("click", function () {
+      kalenderOffen = !kalenderOffen;
+      if (kalenderOffen) { anzeigeMonat = auswahl.slice(0, 7); }
+      fokusAufKnopf = "kachel"; zeichne();
+    });
+    leiste.appendChild(kachel);
+
+    if (kalenderOffen) { leiste.appendChild(baueKalender()); }
     return leiste;
   }
 
@@ -267,9 +374,7 @@
   /* --- Gesamtaufbau ------------------------------------------------------ */
 
   function zeichne() {
-    var z = null;
-    zeitpunkte.forEach(function (t) { if (t.id === auswahl) { z = t; } });
-    var e = z ? STRESS.berechne(z.datum) : null;
+    var e = auswahl ? STRESS.berechne(auswahl) : null;
 
     wurzel.textContent = "";
     var kopf = el("div", "bm-kopf");
@@ -285,7 +390,7 @@
       return;
     }
 
-    wurzel.appendChild(baueKnoepfe());
+    wurzel.appendChild(baueKnoepfe(e));
 
     var raster = el("div", "bm-raster");
 
@@ -296,7 +401,7 @@
     zoneName.style.color = e.zone.text;
     zoneZeile.appendChild(zoneName);
     zoneZeile.appendChild(el("span", "bm-zone-datum",
-      (auswahl === "heute" ? "Stand " : z.label + " · ") + datumText(e.datum)));
+      (auswahl === heute ? "Stand " : "Verlauf · ") + datumText(e.datum)));
     links.appendChild(zoneZeile);
     links.appendChild(baueKette(e.kette));
     raster.appendChild(links);
@@ -306,8 +411,8 @@
     wurzel.appendChild(baueRechenweg());
 
     if (fokusAufKnopf) {
-      var aktiv = wurzel.querySelector('.bm-knopf[aria-pressed="true"]');
-      if (aktiv) { aktiv.focus(); }
+      var aktiv = wurzel.querySelector('[data-fokus="' + fokusAufKnopf + '"]');
+      if (aktiv && !aktiv.disabled) { aktiv.focus(); }
       fokusAufKnopf = false;
     }
   }

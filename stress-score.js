@@ -115,7 +115,7 @@
     return s;
   }
 
-  /* skala (Felix, 2026-10-11): Verkleinerungsfaktor fuer ALLE Schwellen der Kennzahl
+  /* skala (Felix, 2026-10-11, nochmals gesenkt am 2026-10-17: VIX/HY/FFSI/ON RRP 0,4 | SOFR/SOFR-Volumen 0,24 | REPO 0,34): Verkleinerungsfaktor fuer ALLE Schwellen der Kennzahl
      (Wert, Tempo, Trend, jeweils Start- und 100-Punkte-Grenze). Die Zahlen unten sind die
      urspruenglichen Schwellen, die Berechnung multipliziert sie mit skala. 1 = unveraendert. */
   /* --- Kennzahlen: Schwellen von Felix ----------------------------------- */
@@ -126,42 +126,42 @@
   var KENNZAHLEN = [
     { id: "vix", name: "VIX", gruppe: "markt", gewicht: 17, serie: "vix",
       lang: "VIX (Absicherung am Aktienmarkt)", einheit: "", dez: 1,
-      skala: 0.5,
+      skala: 0.4,
       wert: function (v, i, f) { return pt(Math.floor(v[i]) - 16, 0, 14 * f); },
       tempo: { 8: [2, 7], 14: [2, 8] },
       trend: { 20: [2, 9], 40: [3, 11], 60: [4, 12.5] } },
 
     { id: "hy", name: "HY-Spread", gruppe: "markt", gewicht: 16, serie: "hy",
       lang: "High-Yield-Spread (ICE BofA)", einheit: " %", dez: 2,
-      skala: 0.5,
+      skala: 0.4,
       wert: function (v, i, f) { return pt(v[i], 3, 3 + 2 * f); },
       tempo: { 8: [0.10, 0.30], 14: [0.15, 0.40] },
       trend: { 20: [0.15, 0.50], 40: [0.20, 0.70], 60: [0.20, 0.90] } },
 
     { id: "ffsi", name: "FED Stress Index", gruppe: "markt", gewicht: 10, serie: "ffsi",
       lang: "FED Financial Stress Index (wöchentlich)", einheit: "", dez: 2,
-      skala: 0.5,
+      skala: 0.4,
       wert: function (v, i, f) { return pt(v[i], 0, f); },
       tempo: { 2: [0.15, 0.45], 3: [0.15, 0.50] },
       trend: { 4: [0.20, 0.55], 8: [0.20, 0.75], 12: [0.25, 0.85] } },
 
     { id: "sofr", name: "SOFR", gruppe: "funding", gewicht: 20, hebel: 1.6, serie: "sofr",
       lang: "SOFR-Abstand zum FED-Leitzins", einheit: " pp", dez: 2, schnitt: true,
-      skala: 0.3,
+      skala: 0.24,
       wert: function (v, i, f) { return pt(v[i], 0, 0.30 * f); },
       tempo: { 8: [0.02, 0.06], 14: [0.02, 0.07] },
       trend: { 20: [0.02, 0.06], 40: [0.03, 0.08], 60: [0.03, 0.09] } },
 
     { id: "rel", name: "SOFR-Volumen", gruppe: "funding", gewicht: 5, serie: "rel",
       lang: "SOFR-Relation (Abstand je 1.000 Mrd. Volumen)", einheit: " bp", dez: 1, schnitt: true,
-      skala: 0.3,
+      skala: 0.24,
       wert: function (v, i, f) { return pt(v[i], 0, 10 * f); },
       tempo: { 8: [1, 4], 14: [1, 4.5] },
       trend: { 20: [1, 4.5], 40: [1.5, 5.5], 60: [1.5, 5.5] } },
 
     { id: "repo", name: "REPO", gruppe: "funding", gewicht: 16, serie: "repo",
       lang: "REPO (Fed-Repo-Nutzung)", einheit: " Mrd.", dez: 1, schnitt: true,
-      skala: 0.42,
+      skala: 0.34,
       wert: function (v, i, f) { return pt(v[i], 0, 25 * f); },
       tempo: { 3: [0.5, 8], 5: [0.5, 10] },
       trend: { 8: [0.5, 12], 14: [0.5, 15], 20: [0.5, 15] } },
@@ -170,7 +170,7 @@
       lang: "ON RRP (bei der FED geparktes Geld)", einheit: " Mrd.", dez: 1, schnitt: true,
       minIndex: 20,
       /* Wert = 5-Tage-Schnitt minus gleitender 20-Tage-Durchschnitt; Rueckgang = 0 */
-      skala: 0.5,
+      skala: 0.4,
       wert: function (v, i, f) {
         var s = 0;
         for (var j = i - 20; j < i; j++) { s += v[j]; }
@@ -309,7 +309,31 @@
     ];
   }
 
+  /* Hat der VIX an diesem Tag eine eigene Beobachtung? (Wochenende/Feiertag: nein, dann gilt der letzte Wert) */
+  function hatBeobachtung(datum) {
+    var s = vorbereiten();
+    if (!s.vix) { return false; }
+    var i = indexBis(s.vix.d, datum);
+    return i >= 0 && s.vix.d[i] === datum;
+  }
+
+  /* erstes Datum, fuer das ein Barometer berechnet werden kann (Kalender-Grenze nach hinten) */
+  var fruehesteCache;
+  function fruehesterTag() {
+    if (fruehesteCache !== undefined) { return fruehesteCache; }
+    var s = vorbereiten();
+    fruehesteCache = null;
+    if (s.vix) {
+      for (var i = 0; i < s.vix.d.length; i++) {
+        if (berechne(s.vix.d[i])) { fruehesteCache = s.vix.d[i]; break; }
+      }
+    }
+    return fruehesteCache;
+  }
+
   window.STRESS = {
+    hatBeobachtung: hatBeobachtung,
+    fruehesterTag: fruehesterTag,
     HEBEL: HEBEL,
     KETTE_SCHWELLE: KETTE_SCHWELLE,
     ZONEN: ZONEN,

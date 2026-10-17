@@ -1756,6 +1756,48 @@ body.ein-offen { overflow: hidden; }
 .bm-knopf[aria-pressed="true"] .bm-knopf-wert { color: var(--text-sekundaer); }
 .bm-knopf-punkt { width: 9px; height: 9px; border-radius: 50%; flex: none; }
 
+/* Kalender-Kachel: klappt unter den Knoepfen auf, Tageswerte je Monat */
+.bm-historie { position: relative; }
+.bm-knopf-kal { min-width: 220px; }
+.bm-knopf-kal[aria-expanded="true"] { border-color: var(--text-sekundaer); }
+.bm-kalender {
+  flex-basis: 100%;
+  max-width: 420px;
+  background: var(--ebene);
+  border: 1px solid var(--rand);
+  border-radius: 12px;
+  padding: 12px 12px 10px;
+  box-shadow: var(--schatten);
+}
+.bm-kal-kopf { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.bm-kal-monat { font-size: 14px; font-weight: 600; color: var(--text-primaer); }
+.bm-kal-nav {
+  width: 32px; height: 32px;
+  background: none; border: 1px solid var(--rand); border-radius: 8px;
+  font: inherit; font-size: 18px; line-height: 1; color: var(--text-sekundaer); cursor: pointer;
+}
+.bm-kal-nav:hover:not(:disabled) { color: var(--text-primaer); border-color: var(--achse); }
+.bm-kal-nav:focus-visible, .bm-tag:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--serie-1); }
+.bm-kal-nav:disabled { opacity: .35; cursor: default; }
+.bm-kal-raster { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.bm-kal-wt { text-align: center; font-size: 11px; color: var(--text-stumm); padding-bottom: 2px; }
+.bm-tag {
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  padding: 4px 0 5px;
+  background: none;
+  border: 1px solid var(--rand);
+  border-left: 3px solid var(--zone, var(--rand));
+  border-radius: 7px;
+  font: inherit; color: var(--text-sekundaer); cursor: pointer;
+}
+.bm-tag:hover:not(:disabled) { color: var(--text-primaer); border-color: var(--achse); border-left-color: var(--zone, var(--achse)); }
+.bm-tag-nr { font-size: 10px; color: var(--text-stumm); }
+.bm-tag-wert { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.bm-tag-ohne { opacity: .55; }
+.bm-tag-leer { opacity: .35; cursor: default; border-left-color: var(--rand); }
+.bm-tag-aktiv { background: var(--flaeche); border-color: var(--text-sekundaer); border-left-color: var(--zone, var(--text-sekundaer)); color: var(--text-primaer); opacity: 1; }
+.bm-kal-hinweis { margin: 8px 0 0; font-size: 11px; color: var(--text-stumm); }
+
 /* Raster: links Barometer, rechts Liste */
 .bm-raster {
   display: grid;
