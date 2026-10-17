@@ -1384,8 +1384,7 @@ body.dialog-offen { overflow: hidden; }
 /* Durchscheinende Kacheln, nur auf der Startseite und nur bei aktivem
    Hintergrund. Der Weichzeichner kostet Rechenleistung, deshalb laesst er
    sich im Menue auf "Massiv" umstellen. */
-:root[data-theme="dark"][data-kachelstil="durchscheinend"]:not([data-hintergrund="aus"]) .bereich-kachel,
-:root[data-theme="dark"][data-kachelstil="durchscheinend"]:not([data-hintergrund="aus"]) .kalender-liste {
+:root[data-theme="dark"][data-kachelstil="durchscheinend"]:not([data-hintergrund="aus"]) :is(.bereich-kachel, .kalender-liste, .kachel, .karte, .barometer) {
   background: var(--flaeche-glas);
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);

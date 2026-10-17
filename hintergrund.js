@@ -1,7 +1,7 @@
 /* ===========================================================================
    hintergrund.js - Hintergrundbild fuer die Startseite
    ---------------------------------------------------------------------------
-   Laeuft NUR auf index.html. Seit 2026-10-17 gibt es keine Animation und keine
+   Laeuft seit 2026-10-17 auf ALLEN Seiten (Wunsch Felix: einheitlicher Look). Seit 2026-10-17 gibt es keine Animation und keine
    Interaktion mehr: ein festes Foto liegt hinter dem Inhalt, darueber der
    Abdunklungs-Schleier. Die alten Vorlagen (Kurstafel, Handelssaal, Bulle und
    Baer, Hologramm) wurden entfernt, Sicherung: 05_Dashboard/99_Archiv_Hintergruende.

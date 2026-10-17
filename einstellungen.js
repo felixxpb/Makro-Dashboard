@@ -15,6 +15,7 @@
    - Die Einstellungen liegen in localStorage, also PRO GERAET. PC und Handy
      haben getrennte Einstellungen, weil es ohne kostenpflichtigen Server
      keine Synchronisation gibt.
+   - Hintergrundbild laeuft seit 2026-10-17 auf ALLEN Seiten (hintergrund.js).
    - Auf schmalen Bildschirmen ist der Hintergrund beim ersten Besuch AUS
      (Akku), laesst sich aber jederzeit einschalten.
    =========================================================================== */
@@ -115,6 +116,13 @@
     return z.proVorlage[z.aktiv];
   }
 
+  function hexRgba(hex, a) {
+    var h = (hex || "#000000").replace("#", "");
+    if (h.length === 3) { h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2]; }
+    var n = parseInt(h, 16) || 0;
+    return "rgba(" + ((n >> 16) & 255) + "," + ((n >> 8) & 255) + "," + (n & 255) + "," + a + ")";
+  }
+
   /* --- Bekanntgabe an hintergrund.js ------------------------------------ */
 
   function melden() {
@@ -139,6 +147,28 @@
         document.documentElement.style.removeProperty(cssVar);
       }
     });
+
+    /* Kachel- und Textfarbe (je Farbmodus getrennt gemerkt). Inline-Style
+       schlaegt stil.css; ohne eigene Wahl wird er entfernt. */
+    var th = themaJetzt();
+    var kc = z.farben["kachel-" + th], tc = z.farben["text-" + th];
+    var root = document.documentElement.style;
+    if (kc) {
+      root.setProperty("--flaeche", kc);
+      root.setProperty("--flaeche-glas", hexRgba(kc, 0.72));
+    } else {
+      root.removeProperty("--flaeche");
+      root.removeProperty("--flaeche-glas");
+    }
+    if (tc) {
+      root.setProperty("--text-primaer", tc);
+      root.setProperty("--text-sekundaer", hexRgba(tc, 0.78));
+      root.setProperty("--text-stumm", hexRgba(tc, 0.55));
+    } else {
+      root.removeProperty("--text-primaer");
+      root.removeProperty("--text-sekundaer");
+      root.removeProperty("--text-stumm");
+    }
 
     document.dispatchEvent(new CustomEvent("hintergrund-geaendert", {
       detail: { an: z.an, vorlage: z.aktiv, werte: kopie(w) }
@@ -178,7 +208,7 @@
 
   /* --- Menue bauen ------------------------------------------------------ */
 
-  var dialog = null, hintergrundAbschnitt = null;
+  var dialog = null, hintergrundAbschnitt = null, flaechenAbschnitt = null;
 
   function el(tag, klasse, text) {
     var e = document.createElement(tag);
@@ -268,9 +298,14 @@
     return rgbZuHex(normalisiert);
   }
 
+  function schluesselVon(schluessel) {
+    return typeof schluessel === "function" ? schluessel() : schluessel;
+  }
+
   function anzeigeFarbe(schluessel, cssVar) {
     var z = laden();
-    if (z.farben[schluessel]) { return z.farben[schluessel]; }
+    var k = schluesselVon(schluessel);
+    if (z.farben[k]) { return z.farben[k]; }
     return farbeAufloesen(cssVar);
   }
 
@@ -291,18 +326,32 @@
     eingabe.setAttribute("aria-label", beschriftung + " – eigene Farbe wählen");
     eingabe.value = anzeigeFarbe(schluessel, cssVar);
     eingabe.addEventListener("input", function () {
-      z.farben[schluessel] = eingabe.value;
+      z.farben[schluesselVon(schluessel)] = eingabe.value;
       sichern();
     });
     zeile.appendChild(eingabe);
 
     zuruecksetzen.addEventListener("click", function () {
-      delete z.farben[schluessel];
+      delete z.farben[schluesselVon(schluessel)];
       sichern();
       eingabe.value = anzeigeFarbe(schluessel, cssVar);
     });
 
     return zeile;
+  }
+
+  /* Kachel- und Textfarbe: je Farbmodus (hell/dunkel) getrennt gespeichert,
+     weil eine Farbe fuer beide Modi nie passt. */
+  function baueFlaechenAbschnitt() {
+    var behaelter = el("div");
+    behaelter.appendChild(el("p", "ein-hinweis",
+      "Farbe der Kacheln und Textfarbe, getrennt für Hell und Dunkel (gilt für den gerade " +
+      "gewählten Modus). Wirkt sofort auf allen Seiten und wird pro Gerät gespeichert."));
+    behaelter.appendChild(baueFarbregler("einFarbeKachel", "Kachelfarbe",
+      function () { return "kachel-" + themaJetzt(); }, "--flaeche"));
+    behaelter.appendChild(baueFarbregler("einFarbeText", "Textfarbe",
+      function () { return "text-" + themaJetzt(); }, "--text-primaer"));
+    return behaelter;
   }
 
   function baueGraphenAbschnitt() {
@@ -330,7 +379,7 @@
     }));
 
     var hinweis = el("p", "ein-hinweis",
-      "Der Hintergrund erscheint nur auf der Startseite und nur im Dunkelmodus. " +
+      "Der Hintergrund erscheint auf allen Seiten, aber nur im Dunkelmodus. " +
       "Auf dem Handy ist er zunächst aus.");
     behaelter.appendChild(hinweis);
 
@@ -400,6 +449,10 @@
 
   function zeichneEinstellungenNeu() {
     if (!hintergrundAbschnitt) { return; }
+    if (flaechenAbschnitt) {
+      flaechenAbschnitt.innerHTML = "";
+      flaechenAbschnitt.appendChild(baueFlaechenAbschnitt());
+    }
     hintergrundAbschnitt.innerHTML = "";
     hintergrundAbschnitt.appendChild(baueHintergrundAbschnitt());
   }
@@ -440,6 +493,12 @@
     /* Abschnitt Graphenfarben */
     koerper.appendChild(el("div", "ein-titel", "Graphenfarben"));
     koerper.appendChild(baueGraphenAbschnitt());
+
+    /* Abschnitt Kachel- und Textfarbe */
+    koerper.appendChild(el("div", "ein-titel", "Kachel- und Textfarbe"));
+    flaechenAbschnitt = el("div");
+    flaechenAbschnitt.appendChild(baueFlaechenAbschnitt());
+    koerper.appendChild(flaechenAbschnitt);
 
     /* Abschnitt Hintergrund */
     koerper.appendChild(el("div", "ein-titel", "Hintergrund"));
