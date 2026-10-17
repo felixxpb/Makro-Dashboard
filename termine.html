@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="de" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Makro-Dashboard · Termine</title>
+<link rel="stylesheet" href="stil.css?v=20261017">
+</head>
+<body>
+
+<header class="kopf">
+  <div class="kopf-zeile">
+    <div>
+      <a class="kopf-zurueck" href="index.html">← Übersicht</a>
+      <div class="kopf-pfad">Makro-Dashboard</div>
+      <h1>Termine dieser Woche</h1>
+    </div>
+    <button id="themaSchalter" class="thema-schalter" type="button" aria-label="Hell- oder Dunkelmodus umschalten">
+      <span class="thema-hell">Hell</span><span class="thema-dunkel">Dunkel</span>
+    </button>
+  </div>
+  <p class="kopf-frage">Welche Wirtschaftstermine stehen in dieser Woche für die acht Währungen an?</p>
+</header>
+
+<div id="kalenderBereich"></div>
+
+<footer class="fuss">
+  <span>Makro-Dashboard · Teil des FIST-Analyseprozesses</span>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+  var schalter = document.getElementById("themaSchalter");
+  var gespeichert = null;
+  try { gespeichert = localStorage.getItem("dashboard-thema"); } catch (e) { }
+  if (gespeichert) { document.documentElement.setAttribute("data-theme", gespeichert); }
+  schalter.addEventListener("click", function () {
+    var neu = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", neu);
+    try { localStorage.setItem("dashboard-thema", neu); } catch (e) { }
+  });
+})();
+</script>
+
+<!-- Event-Kalender der laufenden Woche -->
+<script src="daten/kalender.js"></script>
+<script src="kalender.js?v=20261017"></script>
+
+<!-- Einstellungs-Menue und Hintergrundbild -->
+<script src="einstellungen.js?v=20261017"></script>
+<script src="hintergrund.js?v=20261017"></script>
+</body>
+</html>

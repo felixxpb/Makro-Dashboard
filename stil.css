@@ -303,6 +303,7 @@ a.bereich-kachel:focus-visible {
 }
 a.bereich-kachel:focus-visible { box-shadow: 0 0 0 2px var(--serie-1); }
 
+.bereich-kachel-breit { grid-column: 1 / -1; }
 .bereich-kachel-offen { opacity: .55; cursor: default; }
 
 .bereich-kachel-titel {

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="de" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Makro-Dashboard</title>
+<link rel="stylesheet" href="stil.css?v=20261017">
+</head>
+<body>
+
+<header class="kopf">
+  <div class="kopf-zeile">
+    <div>
+      <div class="kopf-pfad">Makro-Dashboard</div>
+      <h1>Übersicht</h1>
+    </div>
+    <div class="kopf-knopfleiste">
+      <button id="pdfKnopf" class="pdf-knopf" type="button">PDF-Report herunterladen</button>
+      <button id="themaSchalter" class="thema-schalter" type="button" aria-label="Hell- oder Dunkelmodus umschalten">
+        <span class="thema-hell">Hell</span><span class="thema-dunkel">Dunkel</span>
+      </button>
+    </div>
+  </div>
+  <p class="kopf-frage">Der komplette Makro-Analyseprozess an einem Ort. Auf einen Bereich klicken für Kacheln, Graphen und Detailansichten.</p>
+</header>
+
+<main class="start-raster">
+
+  <a class="bereich-kachel" href="arbeitsmarkt.html">
+    <div class="bereich-kachel-titel">Arbeitsmarkt</div>
+    <p class="bereich-kachel-text">Initial Claims, JOLTS, ISM Employment, Challenger, U-Rate, Nonfarm Payrolls</p>
+    <span class="bereich-kachel-status status-fertig">11 Kennzahlen</span>
+  </a>
+
+  <a class="bereich-kachel" href="inflation.html">
+    <div class="bereich-kachel-titel">Inflation</div>
+    <p class="bereich-kachel-text">CPI, PPI, ISM Prices, Global Supply Chain Pressure Index, TIPS-Breakeven, Michigan-Erwartung</p>
+    <span class="bereich-kachel-status status-fertig">13 Kennzahlen</span>
+  </a>
+
+  <a class="bereich-kachel" href="wachstum.html">
+    <div class="bereich-kachel-titel">Wachstum</div>
+    <p class="bereich-kachel-text">GDPNow, Real GDP, ISM New Orders und Backlog, Durable Goods, Consumer Confidence, NFIB, Baugenehmigungen, OECD CLI</p>
+    <span class="bereich-kachel-status status-fertig">13 Kennzahlen</span>
+  </a>
+
+  <a class="bereich-kachel" href="sentiment.html">
+    <div class="bereich-kachel-titel">Sentiment</div>
+    <p class="bereich-kachel-text">COT-Positionierung: Large Speculators vs. Commercials für EUR, GBP, JPY, AUD, CAD, CHF, NZD, DXY, Gold</p>
+    <span class="bereich-kachel-status status-fertig">9 Kennzahlen</span>
+  </a>
+
+  <a class="bereich-kachel" href="plumbing.html">
+    <div class="bereich-kachel-titel">Plumbing</div>
+    <p class="bereich-kachel-text">SOFR (Satz und Volumen), REPO, Overnight Reverse Repo, VIX, High Yield Credit Spread, FED Financial Stress Index</p>
+    <span class="bereich-kachel-status status-fertig">7 Kennzahlen</span>
+  </a>
+
+  <a class="bereich-kachel" href="zinsen.html">
+    <div class="bereich-kachel-titel">Zinsen</div>
+    <p class="bereich-kachel-text">Leitzinsen FED/EZB/BoE/BoJ/RBA/BoC/SNB/RBNZ, FED-Zinserwartung (Dot Plot), Realrendite, Breakeven, Zinsstrukturkurve</p>
+    <span class="bereich-kachel-status status-fertig">13 Kennzahlen</span>
+  </a>
+
+  <a class="bereich-kachel" href="regime.html">
+    <div class="bereich-kachel-titel">Regime</div>
+    <p class="bereich-kachel-text">ZSK-Spread mit Regime-Verlauf (D1/W1), US02Y und US10Y, IPDA-Tabelle mit Abgleich, Sharp Ratios, Core Setups, Konjunkturzyklus-Frühindikatoren</p>
+    <span class="bereich-kachel-status status-fertig">3 Charts + 4 Kennzahlen</span>
+  </a>
+
+  <a class="bereich-kachel" href="tracking.html">
+    <div class="bereich-kachel-titel">Tracking</div>
+    <p class="bereich-kachel-text">Performance, Risiko, Trade-Effizienz und Zeit/Verhalten je Account und im Portfolio-Gesamt – reine Kennzahlen, kein Journal</p>
+    <span class="bereich-kachel-status status-fertig">19 Kennzahlen</span>
+  </a>
+
+</main>
+
+<!-- Event-Kalender: wird von kalender.js gefuellt, steht unter den
+     Bereichs-Kacheln (Vorgabe Felix, 2026-09-25). -->
+<div id="kalenderBereich"></div>
+
+<footer class="fuss">
+  <span>Makro-Dashboard · Teil des FIST-Analyseprozesses</span>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+  var schalter = document.getElementById("themaSchalter");
+  var gespeichert = null;
+  try { gespeichert = localStorage.getItem("dashboard-thema"); } catch (e) { }
+  if (gespeichert) { document.documentElement.setAttribute("data-theme", gespeichert); }
+  schalter.addEventListener("click", function () {
+    var neu = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", neu);
+    try { localStorage.setItem("dashboard-thema", neu); } catch (e) { }
+  });
+})();
+</script>
+
+<!-- PDF-Report (Version 2, 2026-09-27): nur noch jsPDF von CDN (braucht
+     Internetverbindung). Die AutoTable-Erweiterung ist nicht mehr noetig,
+     seit der Report seine Tabellen selbst als Vektor zeichnet. Danach
+     motor.js nur zum Nachrechnen der Werte (baut auf dieser Seite keine
+     Kacheln, siehe Schutz in motor.js) und pdf-report.js fuer den Knopf.
+     Die Regime-Einstufung fuer die Regime-Seite des Reports laedt
+     pdf-report.js selbst nach (daten/regime.js + regime-ansicht.js). -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/4.2.1/jspdf.umd.min.js"></script>
+<script>if (window.jspdf) { window.jsPDF = window.jspdf.jsPDF; }</script>
+<script src="motor.js"></script>
+<script src="pdf-report.js?v=20261006"></script>
+
+<!-- Event-Kalender der laufenden Woche -->
+<script src="daten/kalender.js"></script>
+<script src="kalender.js"></script>
+
+<!-- Einstellungs-Menue (alle Seiten) und bewegter Hintergrund (nur hier).
+     Reihenfolge wichtig: einstellungen.js legt window.DASHBOARD_EINSTELLUNGEN
+     an, hintergrund.js richtet sich danach. -->
+<script src="einstellungen.js?v=20261017"></script>
+<script src="hintergrund.js?v=20261017"></script>
+</body>
+</html>

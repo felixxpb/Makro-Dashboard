@@ -74,11 +74,13 @@
     <span class="bereich-kachel-status status-fertig">19 Kennzahlen</span>
   </a>
 
-</main>
+  <a class="bereich-kachel bereich-kachel-breit" href="termine.html">
+    <div class="bereich-kachel-titel">Termine dieser Woche</div>
+    <p class="bereich-kachel-text">Wirtschaftskalender der laufenden Woche für die acht Währungen, filterbar nach Impact</p>
+    <span class="bereich-kachel-status status-fertig">Wochenkalender</span>
+  </a>
 
-<!-- Event-Kalender: wird von kalender.js gefuellt, steht unter den
-     Bereichs-Kacheln (Vorgabe Felix, 2026-09-25). -->
-<div id="kalenderBereich"></div>
+</main>
 
 <footer class="fuss">
   <span>Makro-Dashboard · Teil des FIST-Analyseprozesses</span>
@@ -111,11 +113,7 @@
 <script src="motor.js"></script>
 <script src="pdf-report.js?v=20261006"></script>
 
-<!-- Event-Kalender der laufenden Woche -->
-<script src="daten/kalender.js"></script>
-<script src="kalender.js"></script>
-
-<!-- Einstellungs-Menue (alle Seiten) und bewegter Hintergrund (nur hier).
+<!-- Einstellungs-Menue und Hintergrundbild (alle Seiten).
      Reihenfolge wichtig: einstellungen.js legt window.DASHBOARD_EINSTELLUNGEN
      an, hintergrund.js richtet sich danach. -->
 <script src="einstellungen.js?v=20261017"></script>
