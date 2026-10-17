@@ -1340,55 +1340,26 @@ body.dialog-offen { overflow: hidden; }
   --flaeche-glas:   rgba(20, 35, 60, .72);
 }
 
-/* --- Vorlagen-Paletten -----------------------------------------------------
-   Jede Hintergrund-Vorlage kann Kachel-, Rand- und Textfarben umstellen, per
-   [data-hintergrund] (wird von hintergrund.js gesetzt, siehe dort). Ohne
-   passenden Block gilt die Dunkelblau-Palette oben (= Kurstafel).
-   Betrifft NUR die Startseite: data-hintergrund wird ausschliesslich dort
-   gesetzt, die Unterseiten bleiben unberuehrt. */
-:root[data-theme="dark"][data-hintergrund="handelssaal"] {
-  --flaeche:        #241a0d;
-  --ebene:          #150f07;
-  --raster:         #3a2c17;
-  --achse:          #55411f;
-  --rand:           rgba(240, 190, 90, .22);
-  --text-sekundaer: #d9c39a;
-  --text-stumm:     #a68a5e;
-  --serie-1:        #f0b23a;
-  --flaeche-glas:   rgba(42, 30, 16, .68);
-  --akzent-text:    #241704;
-}
-
-/* Bulle und Bär (Felix' Wahl vom 2026-10-01, Variante "Foto-Duell"):
-   neutrales Dunkel mit warmem Sand-Akzent statt Rot ODER Grün - die beiden
-   Duell-Farben stecken schon in den Tieren selbst, der Akzent (Knöpfe,
-   Fokusring) soll keine der beiden Seiten bevorzugen. */
-:root[data-theme="dark"][data-hintergrund="bulle-baer"] {
-  --flaeche:        #18191c;
-  --ebene:          #0c0d0e;
-  --raster:         #26282c;
-  --achse:          #3a3d42;
-  --rand:           rgba(233, 230, 218, .16);
-  --text-sekundaer: #c7c7bd;
-  --text-stumm:     #87877e;
-  --serie-1:        #e9e6da;
-  --flaeche-glas:   rgba(22, 23, 26, .68);
-  --akzent-text:    #14140f;
-}
+/* Die frueheren Vorlagen-Paletten (Handelssaal, Bulle und Baer) sind seit
+   2026-10-17 entfernt; auf der Startseite gilt die Dunkelblau-Palette oben. */
 
 /* --- Hintergrundebenen ---------------------------------------------------
    Beide liegen hinter dem Inhalt (negativer z-index). Die Seitenfarbe des
    body wird auf die Zeichenflaeche des Browsers uebertragen und deshalb
    zuerst gemalt - die Ebenen hier liegen darueber, der Inhalt darueber. */
-.hg-leinwand {
+.hg-bild {
   position: fixed;
   inset: 0;
-  width: 100%;
-  height: 100%;
   z-index: -2;
-  display: block;
   pointer-events: none;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
+
+/* Im Hellmodus kein Hintergrundbild (die Bilder sind fuer Dunkel gedacht) */
+:root:not([data-theme="dark"]) .hg-bild,
+:root:not([data-theme="dark"]) .hg-schleier { display: none !important; }
 
 .hg-schleier {
   position: fixed;
@@ -1624,34 +1595,9 @@ body.ein-offen { overflow: hidden; }
   display: block;
   height: 46px;
   border-radius: 6px;
-  background: #0a1426;
+  background: #0a1426 center / cover no-repeat;
   border: 1px solid var(--rand);
   overflow: hidden;
-}
-
-/* Kleine Vorschau der Kurstafel: drei angedeutete Notierungszeilen
-   (Name, Wert, Veraenderung) als eingebettete Vektorgrafik. */
-.ein-vorlage-bild[data-vorlage="kurstafel"] {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 46' preserveAspectRatio='none'%3E%3Crect width='100' height='46' fill='%230a1426'/%3E%3Crect x='7' y='8' width='19' height='3' rx='1.5' fill='%23a8c8f0' opacity='.7'/%3E%3Crect x='30' y='8' width='15' height='3' rx='1.5' fill='%23ffffff' opacity='.85'/%3E%3Crect x='49' y='8' width='9' height='3' rx='1.5' fill='%2360b2ff'/%3E%3Crect x='62' y='8' width='17' height='3' rx='1.5' fill='%23a8c8f0' opacity='.45'/%3E%3Crect x='83' y='8' width='11' height='3' rx='1.5' fill='%23ffffff' opacity='.45'/%3E%3Crect x='7' y='21' width='14' height='3' rx='1.5' fill='%23a8c8f0' opacity='.6'/%3E%3Crect x='25' y='21' width='18' height='3' rx='1.5' fill='%23ffffff' opacity='.75'/%3E%3Crect x='47' y='21' width='10' height='3' rx='1.5' fill='%23e16c4e'/%3E%3Crect x='61' y='21' width='13' height='3' rx='1.5' fill='%23a8c8f0' opacity='.4'/%3E%3Crect x='78' y='21' width='16' height='3' rx='1.5' fill='%23ffffff' opacity='.4'/%3E%3Crect x='7' y='34' width='17' height='3' rx='1.5' fill='%23a8c8f0' opacity='.5'/%3E%3Crect x='28' y='34' width='13' height='3' rx='1.5' fill='%23ffffff' opacity='.6'/%3E%3Crect x='45' y='34' width='9' height='3' rx='1.5' fill='%2360b2ff' opacity='.8'/%3E%3Crect x='58' y='34' width='19' height='3' rx='1.5' fill='%23a8c8f0' opacity='.35'/%3E%3Crect x='81' y='34' width='12' height='3' rx='1.5' fill='%23ffffff' opacity='.35'/%3E%3C/svg%3E");
-  background-size: 100% 100%;
-  background-repeat: no-repeat;
-}
-
-/* Kleine Vorschau des Handelssaals: warmer Ticker-Screen statt Blau, mit
-   einer angedeuteten "NYSE"-Kopfzeile oben. */
-.ein-vorlage-bild[data-vorlage="handelssaal"] {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 46' preserveAspectRatio='none'%3E%3Crect width='100' height='46' fill='%23150f07'/%3E%3Crect x='0' y='0' width='100' height='11' fill='%233a2c17'/%3E%3Crect x='7' y='4' width='26' height='4' rx='1.5' fill='%23ffe0a0' opacity='.85'/%3E%3Crect x='7' y='19' width='13' height='3' rx='1.5' fill='%23c9ae82' opacity='.7'/%3E%3Crect x='23' y='19' width='15' height='3' rx='1.5' fill='%23ffffff' opacity='.8'/%3E%3Crect x='41' y='19' width='9' height='3' rx='1.5' fill='%235ad678'/%3E%3Crect x='58' y='19' width='17' height='3' rx='1.5' fill='%23c9ae82' opacity='.45'/%3E%3Crect x='79' y='19' width='14' height='3' rx='1.5' fill='%23ffffff' opacity='.4'/%3E%3Crect x='7' y='32' width='16' height='3' rx='1.5' fill='%23c9ae82' opacity='.55'/%3E%3Crect x='26' y='32' width='13' height='3' rx='1.5' fill='%23ffffff' opacity='.6'/%3E%3Crect x='43' y='32' width='9' height='3' rx='1.5' fill='%23e65a46' opacity='.85'/%3E%3Crect x='56' y='32' width='19' height='3' rx='1.5' fill='%23c9ae82' opacity='.35'/%3E%3Crect x='79' y='32' width='12' height='3' rx='1.5' fill='%23ffffff' opacity='.35'/%3E%3C/svg%3E");
-  background-size: 100% 100%;
-  background-repeat: no-repeat;
-}
-
-/* Kleine Vorschau von "Bulle und Bär": dunkler Grund mit einem rötlichen
-   Schein oben links (Bär) und einem grünlichen Schein oben rechts (Bulle),
-   dazu ein kleiner heller Punkt in der Mitte fürs Bündeln der Kursströme. */
-.ein-vorlage-bild[data-vorlage="bulle-baer"] {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 46' preserveAspectRatio='none'%3E%3Crect width='100' height='46' fill='%23101012'/%3E%3Cellipse cx='13' cy='9' rx='17' ry='13' fill='%23e8483c' opacity='.55'/%3E%3Cellipse cx='87' cy='9' rx='17' ry='13' fill='%2335c47a' opacity='.5'/%3E%3Cline x1='4' y1='2' x2='46' y2='30' stroke='%23e8483c' stroke-width='1.4' opacity='.4'/%3E%3Cline x1='96' y1='44' x2='54' y2='16' stroke='%2335c47a' stroke-width='1.4' opacity='.4'/%3E%3Ccircle cx='50' cy='30' r='3.2' fill='%23ffffff' opacity='.9'/%3E%3C/svg%3E");
-  background-size: 100% 100%;
-  background-repeat: no-repeat;
 }
 
 /* Noch nicht gebaute Vorlagen: leerer Platz, klar als offen erkennbar */
@@ -1756,47 +1702,46 @@ body.ein-offen { overflow: hidden; }
 .bm-knopf[aria-pressed="true"] .bm-knopf-wert { color: var(--text-sekundaer); }
 .bm-knopf-punkt { width: 9px; height: 9px; border-radius: 50%; flex: none; }
 
-/* Kalender-Kachel: klappt unter den Knoepfen auf, Tageswerte je Monat */
-.bm-historie { position: relative; }
+/* Kalender-Kachel: klappt buendig unter den Knoepfen auf (gleiche Breite), kompakt */
+.bm-historie { display: grid; grid-template-columns: auto auto; justify-content: start; width: max-content; max-width: 100%; }
 .bm-knopf-kal { min-width: 220px; }
 .bm-knopf-kal[aria-expanded="true"] { border-color: var(--text-sekundaer); }
 .bm-kalender {
-  flex-basis: 100%;
-  max-width: 420px;
+  grid-column: 1 / -1;
   background: var(--ebene);
   border: 1px solid var(--rand);
-  border-radius: 12px;
-  padding: 12px 12px 10px;
-  box-shadow: var(--schatten);
+  border-radius: 9px;
+  padding: 7px 8px 6px;
 }
-.bm-kal-kopf { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-.bm-kal-monat { font-size: 14px; font-weight: 600; color: var(--text-primaer); }
+.bm-kal-kopf { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.bm-kal-monat { font-size: 12px; font-weight: 600; color: var(--text-primaer); }
 .bm-kal-nav {
-  width: 32px; height: 32px;
-  background: none; border: 1px solid var(--rand); border-radius: 8px;
-  font: inherit; font-size: 18px; line-height: 1; color: var(--text-sekundaer); cursor: pointer;
+  width: 24px; height: 22px; padding: 0;
+  background: none; border: 1px solid var(--rand); border-radius: 6px;
+  font: inherit; font-size: 14px; line-height: 1; color: var(--text-sekundaer); cursor: pointer;
 }
 .bm-kal-nav:hover:not(:disabled) { color: var(--text-primaer); border-color: var(--achse); }
 .bm-kal-nav:focus-visible, .bm-tag:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--serie-1); }
 .bm-kal-nav:disabled { opacity: .35; cursor: default; }
-.bm-kal-raster { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
-.bm-kal-wt { text-align: center; font-size: 11px; color: var(--text-stumm); padding-bottom: 2px; }
+.bm-kal-raster { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; }
+.bm-kal-wt { text-align: center; font-size: 10px; color: var(--text-stumm); }
 .bm-tag {
-  display: flex; flex-direction: column; align-items: center; gap: 1px;
-  padding: 4px 0 5px;
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  height: 24px; padding: 0;
   background: none;
   border: 1px solid var(--rand);
-  border-left: 3px solid var(--zone, var(--rand));
-  border-radius: 7px;
+  border-bottom: 2px solid var(--zone, var(--rand));
+  border-radius: 5px;
   font: inherit; color: var(--text-sekundaer); cursor: pointer;
 }
-.bm-tag:hover:not(:disabled) { color: var(--text-primaer); border-color: var(--achse); border-left-color: var(--zone, var(--achse)); }
-.bm-tag-nr { font-size: 10px; color: var(--text-stumm); }
-.bm-tag-wert { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.bm-tag:hover:not(:disabled) { color: var(--text-primaer); border-color: var(--achse); border-bottom-color: var(--zone, var(--achse)); }
+.bm-tag-nr { position: absolute; top: 0; left: 2px; font-size: 7px; line-height: 1; color: var(--text-stumm); }
+.bm-tag-wert { font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .bm-tag-ohne { opacity: .55; }
-.bm-tag-leer { opacity: .35; cursor: default; border-left-color: var(--rand); }
-.bm-tag-aktiv { background: var(--flaeche); border-color: var(--text-sekundaer); border-left-color: var(--zone, var(--text-sekundaer)); color: var(--text-primaer); opacity: 1; }
-.bm-kal-hinweis { margin: 8px 0 0; font-size: 11px; color: var(--text-stumm); }
+.bm-tag-leer { opacity: .35; cursor: default; border-bottom-color: var(--rand); }
+.bm-tag-aktiv { background: var(--flaeche); border-color: var(--text-sekundaer); border-bottom-color: var(--zone, var(--text-sekundaer)); color: var(--text-primaer); opacity: 1; }
+.bm-kal-hinweis { margin: 4px 0 0; font-size: 10px; line-height: 1.3; color: var(--text-stumm); }
 
 /* Raster: links Barometer, rechts Liste */
 .bm-raster {

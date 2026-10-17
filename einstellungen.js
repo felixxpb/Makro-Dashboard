@@ -25,40 +25,27 @@
   var SPEICHER = "dashboard-hintergrund";
 
   /* --- Vorlagen ---------------------------------------------------------
-     Kurstafel (2026-09-29) und Handelssaal (2026-09-30) stehen fest, je mit
-     Felix' eigenen Reglerwerten als Standard. Hologramm und Bulle/Bär sind
-     als Konzept durchgeplant (siehe 04_Entwuerfe/proben) - Felix hat unter
-     mehreren Varianten je Vorlage aber noch keine endgueltige gewaehlt,
-     deshalb "fertig: false". Sobald er sich entscheidet: hierher kopieren
-     wie Handelssaal, dazu die Zeichenroutine in hintergrund.js ergaenzen. */
+     Seit 2026-10-17 vier feste Hintergrundbilder (Felix). Keine Animation,
+     keine Interaktion. Je Bild eigene Reglerwerte (Standard); "bild" ist der
+     Pfad relativ zur Seite. */
   var VORLAGEN = [
-    {
-      id: "kurstafel",
-      name: "Kurstafel",
-      beschreibung: "Wand aus Kursnotierungen, die einzeln auf- und abblenden, dazwischen kleine Verlaufslinien.",
-      fertig: true,
-      standard: { abdunklung: 65, tempo: 100, deckkraft: 100, kacheln: "durchscheinend", bildrate: 60 }
-    },
-    { id: "hologramm", name: "Hologramm", beschreibung: "Schwebende Diagrammtafeln in Blau/Sand. Auswahl unter 3 Varianten noch offen.", fertig: false },
-    {
-      id: "bulle-baer",
-      name: "Bulle und Bär",
-      beschreibung: "Felix' eigenes Foto: Bär und Bulle groß oben, mit wanderndem Rot-Weiß-/Grün-Weiß-Schimmer und Kursströmen, die sich in der Mitte bündeln.",
-      fertig: true,
-      standard: { abdunklung: 55, tempo: 100, deckkraft: 100, kacheln: "durchscheinend", bildrate: 30 }
-    },
-    {
-      id: "handelssaal",
-      name: "Handelssaal",
-      beschreibung: "NYSE-Parkett bei Nacht: Anzeigetafeln und Kursraster, warmes Gold statt Blau.",
-      fertig: true,
-      standard: { abdunklung: 50, tempo: 60, deckkraft: 100, kacheln: "durchscheinend", bildrate: 30 }
-    }
+    { id: "wallstreet", name: "Wall Street", bild: "bilder/hg-wallstreet.jpg",
+      beschreibung: "Straßenschlucht mit Börsengebäude in New York.", fertig: true,
+      standard: { abdunklung: 60, deckkraft: 100, kacheln: "durchscheinend" } },
+    { id: "boerse-rot", name: "Kurstafel rot", bild: "bilder/hg-boerse-rot.webp",
+      beschreibung: "Rote Anzeigetafel mit Kursverläufen.", fertig: true,
+      standard: { abdunklung: 55, deckkraft: 100, kacheln: "durchscheinend" } },
+    { id: "hologramm", name: "Hologramm", bild: "bilder/hg-hologramm.jpg",
+      beschreibung: "Blaue Diagramme und Tabellen über einer Hand.", fertig: true,
+      standard: { abdunklung: 55, deckkraft: 100, kacheln: "durchscheinend" } },
+    { id: "kerzen", name: "Kerzenchart", bild: "bilder/hg-kerzen.jpg",
+      beschreibung: "Grüne Kerzen mit Raster und roter Linie.", fertig: true,
+      standard: { abdunklung: 50, deckkraft: 100, kacheln: "durchscheinend" } }
   ];
 
   /* Generischer Rueckfall, falls eine Vorlage einmal keinen eigenen
      "standard" mitbringt. */
-  var STANDARD = { abdunklung: 65, tempo: 100, deckkraft: 100, kacheln: "durchscheinend", bildrate: 60 };
+  var STANDARD = { abdunklung: 60, deckkraft: 100, kacheln: "durchscheinend" };
 
   function kopie(o) {
     var n = {}, k;
@@ -84,7 +71,7 @@
     zustand = {
       /* Erster Besuch: auf dem Handy bewusst aus, am Rechner an */
       an: g && typeof g.an === "boolean" ? g.an : !schmal(),
-      aktiv: g && g.aktiv ? g.aktiv : "kurstafel",
+      aktiv: g && g.aktiv ? g.aktiv : VORLAGEN[0].id,
       proVorlage: (g && g.proVorlage) || {},
       /* Eigene Graphen-Farben, unabhaengig von Hintergrund-Vorlage und Thema.
          Schluessel serie1/serie2 wie die CSS-Variablen --serie-1/--serie-2,
@@ -108,7 +95,7 @@
 
     /* Falls eine noch nicht gebaute Vorlage gespeichert war */
     if (!vorlageVon(zustand.aktiv) || !vorlageVon(zustand.aktiv).fertig) {
-      zustand.aktiv = "kurstafel";
+      zustand.aktiv = VORLAGEN[0].id;
     }
     return zustand;
   }
@@ -140,7 +127,7 @@
     document.documentElement.setAttribute("data-hintergrund", z.an ? z.aktiv : "aus");
 
     /* Eigene Graphenfarben: als Inline-Style gesetzt, das schlaegt IMMER die
-       Palette-Bloecke in stil.css (z. B. [data-hintergrund="handelssaal"]),
+       Palette-Bloecke in stil.css (frueher je Vorlage, seit 2026-10-17 entfernt),
        egal welche Vorlage gerade laeuft. Ohne eigene Wahl (kein Eintrag in
        z.farben) wird die Eigenschaft entfernt, dann greift wieder die Farbe
        der aktuellen Vorlage. */
@@ -343,8 +330,8 @@
     }));
 
     var hinweis = el("p", "ein-hinweis",
-      "Der Hintergrund läuft nur auf der Startseite und nur im Dunkelmodus. " +
-      "Auf dem Handy ist er zum Akkusparen zunächst aus.");
+      "Der Hintergrund erscheint nur auf der Startseite und nur im Dunkelmodus. " +
+      "Auf dem Handy ist er zunächst aus.");
     behaelter.appendChild(hinweis);
 
     if (!z.an) { return behaelter; }
@@ -362,6 +349,7 @@
 
       var vorschau = el("span", "ein-vorlage-bild");
       vorschau.setAttribute("data-vorlage", v.id);
+      vorschau.style.backgroundImage = 'url("' + v.bild + '")';
       vorschau.setAttribute("aria-hidden", "true");
       k.appendChild(vorschau);
 
@@ -389,10 +377,6 @@
       function (v) { return v + " %"; },
       function (v) { w.abdunklung = v; sichern(); }));
 
-    behaelter.appendChild(baueRegler("einTempo", "Tempo", 15, 200, 5, w.tempo,
-      function (v) { return (v / 100).toFixed(2).replace(".", ",") + " ×"; },
-      function (v) { w.tempo = v; sichern(); }));
-
     behaelter.appendChild(baueRegler("einDeckkraft", "Deckkraft Hintergrund", 10, 100, 5, w.deckkraft,
       function (v) { return v + " %"; },
       function (v) { w.deckkraft = v; sichern(); }));
@@ -401,16 +385,6 @@
       { text: "Durchscheinend", wert: "durchscheinend" },
       { text: "Massiv", wert: "massiv" }
     ], function (v) { return w.kacheln === v; }, function (v) { w.kacheln = v; sichern(); }));
-
-    behaelter.appendChild(baueWahl("Bildrate", [
-      { text: "30 fps", wert: 30 },
-      { text: "60 fps", wert: 60 }
-    ], function (v) { return w.bildrate === v; }, function (v) { w.bildrate = v; sichern(); }));
-
-    var last = el("p", "ein-hinweis",
-      "30 Bilder pro Sekunde reichen für diese Bewegung und halbieren die Rechenlast. " +
-      "60 sieht minimal flüssiger aus und kostet mehr Akku.");
-    behaelter.appendChild(last);
 
     var zurueck = el("button", "ein-zuruecksetzen", "Auf Standard zurücksetzen");
     zurueck.type = "button";
