@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Makro-Dashboard</title>
-<link rel="stylesheet" href="stil.css?v=20261017">
+<link rel="stylesheet" href="stil.css?v=20261108">
 </head>
 <body>
 
@@ -15,7 +15,24 @@
       <h1>Übersicht</h1>
     </div>
     <div class="kopf-knopfleiste">
+      <label class="pdf-stichtag" title="Leer lassen = Report von heute. Tag wählen = Report mit dem Datenstand dieses Tages.">
+        <span>Stichtag</span>
+        <input type="date" id="pdfStichtag" aria-label="Stichtag für den PDF-Report">
+      </label>
       <button id="pdfKnopf" class="pdf-knopf" type="button">PDF-Report herunterladen</button>
+      <details class="pdf-vergleich">
+        <summary>Vergleich</summary>
+        <div class="pdf-vergleich-box">
+          <p>2 bis 4 Tage wählen, die nebeneinander verglichen werden.</p>
+          <div class="pdf-vergleich-felder">
+            <input type="date" class="vergleich-tag" aria-label="Vergleichstag 1">
+            <input type="date" class="vergleich-tag" aria-label="Vergleichstag 2">
+            <input type="date" class="vergleich-tag" aria-label="Vergleichstag 3 (optional)">
+            <input type="date" class="vergleich-tag" aria-label="Vergleichstag 4 (optional)">
+          </div>
+          <button id="vergleichKnopf" class="pdf-knopf" type="button">Vergleichs-Report herunterladen</button>
+        </div>
+      </details>
       <button id="themaSchalter" class="thema-schalter" type="button" aria-label="Hell- oder Dunkelmodus umschalten">
         <span class="thema-hell">Hell</span><span class="thema-dunkel">Dunkel</span>
       </button>
@@ -110,8 +127,8 @@
      pdf-report.js selbst nach (daten/regime.js + regime-ansicht.js). -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/4.2.1/jspdf.umd.min.js"></script>
 <script>if (window.jspdf) { window.jsPDF = window.jspdf.jsPDF; }</script>
-<script src="motor.js"></script>
-<script src="pdf-report.js?v=20261006"></script>
+<script src="motor.js?v=20261108"></script>
+<script src="pdf-report.js?v=20261108"></script>
 
 <!-- Einstellungs-Menue und Hintergrundbild (alle Seiten).
      Reihenfolge wichtig: einstellungen.js legt window.DASHBOARD_EINSTELLUNGEN

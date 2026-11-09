@@ -258,7 +258,9 @@
 
   function zeichneTitelkopf(doc) {
     var heute = new Date();
-    var woche = berichtsWoche(heute);
+    /* Mit Stichtag: Woche und Kopf beziehen sich auf diesen Tag, "erzeugt" bleibt die echte Zeit */
+    var bezug = window.STICHTAG ? new Date(window.STICHTAG + "T12:00:00") : heute;
+    var woche = berichtsWoche(bezug);
     zustand.kw = "KW " + woche.kw;
     zustand.erzeugt = "erzeugt " + datumKurz(heute) + ", " +
       heute.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) + " Uhr";
@@ -281,6 +283,12 @@
     tinte(doc, C.matt);
     schrift(doc, 7.5);
     doc.text("Makro-Wochenreport · FIST-Analyseprozess", RAND, 35);
+    if (window.STICHTAG) {
+      tinte(doc, C.schlecht);
+      schrift(doc, 7.5, "bold");
+      doc.text("STICHTAG " + isoKurz(window.STICHTAG) + " – alle Werte auf dem Datenstand dieses Tages",
+        SEITE_B - RAND, 35, { align: "right" });
+    }
     return 41;
   }
 
@@ -493,6 +501,8 @@
       einheit: M.einheitVon(k) || "",
       stand: M.datumText(letzter.d, art),
       standIso: letzter.d,
+      v: letzter.v,
+      format: k.format,
       d: d,
       punkte: verdichte(letzteNJahre(punkte, 3), 90),
       art: art
@@ -501,7 +511,7 @@
 
   var BEREICHE = {};
 
-  function bereichBerechnen(id, name, kachelListe) {
+  function bereichBerechnenStandard(id, name, kachelListe) {
     var zeilen = kachelListe.map(zeileBerechnen);
     var t = { up: 0, down: 0, flat: 0 };
     var jung = null;
@@ -1127,7 +1137,9 @@
 
   function regimeAnordnung() {
     var L = window.REGIME_LOGIK;
-    return L && L.daten && L.daten.D1 ? L.daten.D1 : [];
+    var d1 = L && L.daten && L.daten.D1 ? L.daten.D1 : [];
+    if (window.STICHTAG) { d1 = d1.filter(function (p) { return p.d <= window.STICHTAG; }); }
+    return d1;
   }
 
   function zahl2(v) { return v.toFixed(2).replace(".", ","); }
@@ -1335,7 +1347,8 @@
      13. Ablauf
      ========================================================================= */
 
-  async function ladeAlleBereiche(knopf) {
+  async function ladeAlleBereiche(knopf, handler) {
+    var bereichBerechnen = handler || bereichBerechnenStandard;
     function schritt(name) { knopf.textContent = "Lade " + name + " …"; }
 
     var ahe = { schluessel: "CES0500000003", quelle: "fred", titel: "Average Hourly Earnings", format: "prozent", einheitFest: "% MoM" };
@@ -1379,8 +1392,13 @@
       if (!jsPDF) { throw new Error("PDF-Bibliothek (jsPDF) konnte nicht geladen werden – Internetverbindung prüfen."); }
       laufStempel = String(Date.now());
       BEREICHE = {};
+      /* Stichtag aus dem Datumsfeld (leer = heute, wie bisher) */
+      var feld = document.getElementById("pdfStichtag");
+      var stichtag = optionen.stichtag || (feld && feld.value) || "";
+      var heuteIso = new Date().toISOString().slice(0, 10);
+      window.STICHTAG = (stichtag && stichtag < heuteIso) ? stichtag : null;
 
-      var rotation = await ladeAlleBereiche(knopf);
+      var rotation = await ladeAlleBereiche(knopf, bereichBerechnenStandard);
 
       knopf.textContent = "Baue PDF …";
       var doc = new jsPDF({ unit: "mm", format: "a4" });
@@ -1413,11 +1431,288 @@
 
       zeichneFuesse(doc);
       if (optionen.alsDokument) { return doc; }
-      doc.save("MakroReport-" + new Date().toISOString().slice(0, 10) + ".pdf");
+      doc.save("MakroReport-" + (window.STICHTAG || new Date().toISOString().slice(0, 10)) + ".pdf");
     } catch (fehler) {
       if (optionen.alsDokument) { throw fehler; }
       window.alert("PDF konnte nicht erzeugt werden.\n\n" + fehler.message);
     } finally {
+      window.STICHTAG = null;
+      aufraeumen();
+      knopf.disabled = false;
+      knopf.textContent = textVorher;
+    }
+  }
+
+
+  /* =========================================================================
+     14. Vergleichs-Report (Muster A mit Pfeilen, Entscheidung Felix 2026-11-09)
+     Gleiche Kennzahlen wie der Report, 2 bis 4 Stichtage nebeneinander.
+     Pfeil/Farbe je Wert = Veraenderung gegenueber der Spalte davor (gruen
+     gestiegen, rot gefallen, Strich = unveraendert), rechts Heatmap mit der
+     Gesamtveraenderung erster bis letzter Tag. Keine Bewertung, nur Richtung.
+     ========================================================================= */
+
+  var VERGLEICH = {};
+  var VG_NAME = 50, VG_HEAT = 28;
+
+  function vgFmt(f) { return f || "faktor"; }
+
+  function vgZelle(z) {
+    return (!z || z.leer) ? null : { v: z.v, text: z.aktuell };
+  }
+
+  /* Bereich fuer alle Stichtage berechnen (Daten sind gerade geladen) */
+  function vergleichBereich(tage) {
+    return function (id, name, kachelListe) {
+      var rows = kachelListe.map(function (k) {
+        var werte = tage.map(function (t) {
+          window.STICHTAG = t;
+          return vgZelle(zeileBerechnen(k));
+        });
+        var einheit = window.MOTOR.einheitVon(k) || "";
+        return { titel: k.titel, einheit: einheit, format: k.format, werte: werte };
+      });
+      if (id === "plumb" && window.STRESS) {
+        var S = window.STRESS;
+        var baro = tage.map(function (t) {
+          window.STICHTAG = t;
+          var e = S.berechne(S.stand() || t);
+          return e ? { v: e.barometer, text: zahlDe(e.barometer, 0), zusatz: e.zone.name } : null;
+        });
+        rows.unshift({ titel: "Stress-Barometer (0–100)", einheit: "Punkte", format: "ganz", werte: baro });
+      }
+      VERGLEICH[id] = { name: name, rows: rows };
+    };
+  }
+
+  function vergleichRegime(tage) {
+    var rows = [], L = window.REGIME_LOGIK;
+    var tageRegime = tage.map(function (t) {
+      window.STICHTAG = t;
+      var d1 = regimeAnordnung();
+      return d1.length ? d1[d1.length - 1] : null;
+    });
+    function zahlRow(titel, feld) {
+      rows.push({ titel: titel, einheit: "%", format: "faktor", werte: tageRegime.map(function (r) {
+        return r ? { v: r[feld], text: zahl2(r[feld]) } : null;
+      }) });
+    }
+    zahlRow("US02Y · 2-jährige Rendite", "y2");
+    zahlRow("US10Y · 10-jährige Rendite", "y10");
+    zahlRow("ZSK · 10Y – 2Y Spread", "sp");
+    rows.push({ titel: "IPDA-Regime (" + L.fensterIpda + " Handelstage)", textRegime: true,
+      werte: tageRegime.map(function (r) { return r && r.ipda ? { text: r.ipda } : null; }) });
+    rows.push({ titel: "Regime (" + L.fensterTag + " Handelstage)", textRegime: true,
+      werte: tageRegime.map(function (r) { return r && r.tag ? { text: r.tag } : null; }) });
+    VERGLEICH.regime = { name: "Regime", rows: rows };
+  }
+
+  function vgKopf(doc, y, tage, name, fortsetzung) {
+    var n = tage.length, cw = (INHALT - VG_NAME - VG_HEAT) / n;
+    tinte(doc, C.akzent);
+    schrift(doc, 8, "bold");
+    doc.text(name.toUpperCase() + (fortsetzung ? " (FORTSETZUNG)" : ""), RAND, y);
+    stift(doc, C.akzent);
+    doc.setLineWidth(0.4);
+    doc.line(RAND, y + 1.8, RAND + INHALT, y + 1.8);
+    y += 6.2;
+    tinte(doc, C.matt);
+    schrift(doc, 5.8, "bold");
+    doc.text("KENNZAHL", RAND + 1.5, y);
+    tage.forEach(function (t, i) {
+      doc.text(isoKurz(t), RAND + VG_NAME + cw * (i + 1) - 3, y, { align: "right" });
+    });
+    doc.text("VERÄND. " + isoKurz(tage[0]).slice(0, 5) + " – " + isoKurz(tage[n - 1]).slice(0, 5),
+      RAND + INHALT - 2, y, { align: "right" });
+    haarlinie(doc, RAND, y + 1.8, RAND + INHALT, C.linieDunkel, 0.25);
+    return y + 2.6;
+  }
+
+  function vgZeile(doc, y, row, tage, maxRel) {
+    var M = window.MOTOR, n = tage.length, cw = (INHALT - VG_NAME - VG_HEAT) / n;
+    var mitte = y + ZEILE_H / 2;
+    tinte(doc, C.tinte);
+    schrift(doc, 6.9);
+    doc.text(doc.splitTextToSize(row.titel, VG_NAME - 2)[0], RAND + 1.5, mitte + 0.8);
+    row.werte.forEach(function (w, i) {
+      var xr = RAND + VG_NAME + cw * (i + 1) - 3;
+      if (!w) {
+        tinte(doc, C.zart);
+        schrift(doc, 6.5);
+        doc.text("–", xr, mitte + 0.8, { align: "right" });
+        return;
+      }
+      if (row.textRegime) {
+        var f = REGIME_FARBE[w.text] || C.karte;
+        var br = Math.min(cw - 3, 24);
+        fuell(doc, f);
+        doc.roundedRect(xr - br, y + 0.8, br, ZEILE_H - 1.6, 0.8, 0.8, "F");
+        tinte(doc, C.tinte);
+        schrift(doc, 5.4, "bold");
+        doc.text(w.text, xr - br / 2, mitte + 0.8, { align: "center" });
+        return;
+      }
+      var vor = i > 0 ? row.werte[i - 1] : null;
+      var g = (vor && w.v !== undefined && vor.v !== undefined) ? M.gerundet(w.v - vor.v, vgFmt(row.format)) : null;
+      var farbe = (i === 0 || g === null) ? C.tinte : farbeFuerDiff(g);
+      tinte(doc, farbe);
+      schrift(doc, 7, i === 0 ? "normal" : "bold");
+      doc.text(w.text, xr, mitte + 0.8, { align: "right" });
+      if (i > 0 && g !== null) {
+        var tb = doc.getTextWidth(w.text);
+        if (g) {
+          dreieck(doc, xr - tb - 2.2, mitte - 0.1, g, 1.9);
+        } else {
+          stift(doc, C.zart);
+          doc.setLineWidth(0.3);
+          doc.line(xr - tb - 3.2, mitte - 0.1, xr - tb - 1.2, mitte - 0.1);
+        }
+      }
+    });
+
+    /* Heatmap: Gesamtveraenderung erster bis letzter Tag */
+    var a = row.werte[0], b = row.werte[n - 1];
+    var hx = RAND + INHALT - VG_HEAT;
+    if (row.textRegime) {
+      var gleich = a && b && a.text === b.text;
+      tinte(doc, gleich ? C.zart : C.schlecht);
+      schrift(doc, 6, "bold");
+      doc.text(a && b ? (gleich ? "unverändert" : "Wechsel") : "–", hx + VG_HEAT / 2, mitte + 0.8, { align: "center" });
+    } else if (a && b && a.v !== undefined && b.v !== undefined) {
+      var diff = b.v - a.v, gg = M.gerundet(diff, vgFmt(row.format));
+      var flaeche, text;
+      if (gg === 0) {
+        flaeche = C.neutralZelle; text = C.matt;
+      } else {
+        var rel = Math.abs(diff) / (Math.abs(a.v) > 1e-9 ? Math.abs(a.v) : 1);
+        var r = maxRel ? rel / maxRel : 0;
+        var stufe = r > 0.66 ? 2 : r > 0.25 ? 1 : 0;
+        var paar = (gg > 0 ? HEAT_GRUEN : HEAT_ROT)[stufe];
+        flaeche = paar[0]; text = paar[1];
+      }
+      fuell(doc, flaeche);
+      doc.roundedRect(hx + 0.7, y + 0.8, VG_HEAT - 1.4, ZEILE_H - 1.6, 0.8, 0.8, "F");
+      tinte(doc, text);
+      schrift(doc, 6.4, "bold");
+      doc.text(M.veraenderungText(diff, vgFmt(row.format)), hx + VG_HEAT / 2, mitte + 0.8, { align: "center" });
+    }
+    [RAND + VG_NAME].concat(tage.map(function (_, i) { return RAND + VG_NAME + cw * (i + 1); })).forEach(function (x) {
+      senkrechte(doc, x, y, y + ZEILE_H);
+    });
+    haarlinie(doc, RAND, y + ZEILE_H, RAND + INHALT, C.linie, 0.12);
+    return y + ZEILE_H;
+  }
+
+  function vgTabelle(doc, y, id, tage) {
+    var bereich = VERGLEICH[id];
+    if (!bereich) { return y; }
+    zustand.bereich = bereich.name;
+    var maxRel = 0;
+    bereich.rows.forEach(function (row) {
+      var a = row.werte[0], b = row.werte[row.werte.length - 1];
+      if (row.textRegime || !a || !b || a.v === undefined || b.v === undefined) { return; }
+      var rel = Math.abs(b.v - a.v) / (Math.abs(a.v) > 1e-9 ? Math.abs(a.v) : 1);
+      if (rel > maxRel) { maxRel = rel; }
+    });
+    y = platzPruefen(doc, y, 6.2 + 4.4 + ZEILE_H * 2);
+    y = vgKopf(doc, y, tage, bereich.name, false) + 0.4;
+    bereich.rows.forEach(function (row) {
+      var vorher = y;
+      y = platzPruefen(doc, y, ZEILE_H);
+      if (y < vorher) { y = vgKopf(doc, y + 2, tage, bereich.name, true) + 0.4; }
+      y = vgZeile(doc, y, row, tage, maxRel);
+    });
+    return y + 4;
+  }
+
+  function vgLegende(doc, y) {
+    y = platzPruefen(doc, y, 14);
+    var x = RAND;
+    var t1 = "gestiegen gegenüber der Spalte davor";
+    schrift(doc, 5.8);
+    tinte(doc, C.matt);
+    dreieck(doc, x + 1.2, y - 0.9, 1, 1.9);
+    doc.text(t1, x + 3.6, y);
+    x += 3.6 + doc.getTextWidth(t1) + 5;
+    dreieck(doc, x + 1.2, y - 0.9, -1, 1.9);
+    doc.text("gefallen", x + 3.6, y);
+    x += 3.6 + doc.getTextWidth("gefallen") + 5;
+    stift(doc, C.zart);
+    doc.setLineWidth(0.3);
+    doc.line(x, y - 0.9, x + 2, y - 0.9);
+    tinte(doc, C.matt);
+    doc.text("unverändert", x + 3.6, y);
+    tinte(doc, C.zart);
+    doc.text("Farbe und Pfeil zeigen nur die Richtung, keine Bewertung. Rechts: Veränderung erster bis letzter Tag, Sättigung = Stärke relativ zur größten Veränderung im Bereich.",
+      RAND, y + 4.5);
+    doc.text("Monats- und Quartalswerte stehen mit ihrem Berichtsdatum (letzter Wert bis zum Stichtag), nicht mit dem Veröffentlichungstag.", RAND, y + 8);
+    return y + 12;
+  }
+
+  function vgTitelkopf(doc, tage) {
+    var heute = new Date();
+    zustand.kw = "Vergleich";
+    zustand.erzeugt = "erzeugt " + datumKurz(heute) + ", " +
+      heute.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) + " Uhr";
+    tinte(doc, C.tinte);
+    schrift(doc, 25, "bold");
+    doc.text("MakroReport", RAND, 26);
+    schrift(doc, 10, "bold");
+    doc.text("Vergleich", SEITE_B - RAND, 20.5, { align: "right" });
+    tinte(doc, C.matt);
+    schrift(doc, 7.5);
+    doc.text(tage.map(isoKurz).join("  ·  "), SEITE_B - RAND, 25.5, { align: "right" });
+    stift(doc, C.akzent);
+    doc.setLineWidth(0.6);
+    doc.line(RAND, 30, RAND + INHALT, 30);
+    tinte(doc, C.matt);
+    schrift(doc, 7.5);
+    doc.text("Makro-Vergleichsreport · " + tage.length + " Stichtage nebeneinander · FIST-Analyseprozess", RAND, 35);
+    return 41;
+  }
+
+  async function erzeugeVergleich(knopf, tageRoh, optionen) {
+    optionen = optionen || {};
+    var textVorher = knopf.textContent;
+    knopf.disabled = true;
+    try {
+      var jsPDF = window.jspdf && window.jspdf.jsPDF;
+      if (!jsPDF) { throw new Error("PDF-Bibliothek (jsPDF) konnte nicht geladen werden – Internetverbindung prüfen."); }
+      var heuteIso = new Date().toISOString().slice(0, 10);
+      var tage = [];
+      (tageRoh || []).forEach(function (t) {
+        if (t && t <= heuteIso && tage.indexOf(t) < 0) { tage.push(t); }
+      });
+      tage.sort();
+      tage = tage.slice(0, 4);
+      if (tage.length < 2) { throw new Error("Bitte mindestens zwei verschiedene Tage (nicht in der Zukunft) wählen."); }
+
+      laufStempel = String(Date.now());
+      VERGLEICH = {};
+      await ladeAlleBereiche(knopf, vergleichBereich(tage));
+      vergleichRegime(tage);
+      window.STICHTAG = null;
+
+      knopf.textContent = "Baue PDF …";
+      var doc = new jsPDF({ unit: "mm", format: "a4" });
+      doc.setFont("helvetica", "normal");
+      schriftSicherMachen(doc);
+      seitenGrund(doc);
+      var y = vgTitelkopf(doc, tage);
+      zustand.bereich = "";
+      ["arbeit", "infl", "wachs", "zins"].forEach(function (id) { y = vgTabelle(doc, y, id, tage); });
+      y = neueSeite(doc);
+      y = vgTabelle(doc, y, "plumb", tage);
+      y = vgTabelle(doc, y, "regime", tage);
+      vgLegende(doc, y);
+      zeichneFuesse(doc);
+      if (optionen.alsDokument) { return doc; }
+      doc.save("MakroReport-Vergleich-" + tage[0] + "_bis_" + tage[tage.length - 1] + ".pdf");
+    } catch (fehler) {
+      if (optionen.alsDokument) { throw fehler; }
+      window.alert("Vergleichs-Report konnte nicht erzeugt werden.\n\n" + fehler.message);
+    } finally {
+      window.STICHTAG = null;
       aufraeumen();
       knopf.disabled = false;
       knopf.textContent = textVorher;
@@ -1429,6 +1724,9 @@
   window.MAKRO_REPORT = {
     erzeuge: function (knopf, optionen) {
       return erzeugeReport(knopf || { textContent: "", disabled: false }, optionen);
+    },
+    vergleiche: function (tage, knopf, optionen) {
+      return erzeugeVergleich(knopf || { textContent: "", disabled: false }, tage, optionen);
     }
   };
 
@@ -1436,6 +1734,14 @@
     var knopf = document.getElementById("pdfKnopf");
     if (!knopf) { return; }
     knopf.addEventListener("click", function () { erzeugeReport(knopf); });
+
+    var vk = document.getElementById("vergleichKnopf");
+    if (vk) {
+      vk.addEventListener("click", function () {
+        var tage = [].slice.call(document.querySelectorAll(".vergleich-tag")).map(function (e) { return e.value; });
+        erzeugeVergleich(vk, tage);
+      });
+    }
   });
 
 })();

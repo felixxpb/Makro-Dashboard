@@ -89,8 +89,8 @@
     s.repo = rp ? { d: rp.d, v: mittel5(rp.v) } : null;
     s.rrp  = rr ? { d: rr.d, v: mittel5(rr.v) } : null;
 
-    /* SOFR-Abstand zum Leitzins und SOFR-Relation (Basispunkte je 1.000 Mrd.
-       Volumen), beide auf den Tagen, an denen Satz und Volumen vorliegen */
+    /* SOFR-Abstand zum Leitzins und SOFR-Volumen-Kennzahl (siehe unten),
+       beide auf den Tagen, an denen Satz und Volumen vorliegen */
     var so = punkteVon(P, "SOFR_RATE");
     var sv = punkteVon(P, "SOFR_VOLUME");
     var fed = punkteVon(Z, "FED_LEITZINS");
@@ -109,7 +109,23 @@
       });
       var ab5 = mittel5(ab), vol5 = mittel5(vol);
       s.sofr = { d: d, v: ab5 };
-      s.rel = { d: d, v: ab5.map(function (a, i) { return a * 100 / vol5[i]; }) };
+      /* SOFR-Volumen (Felix, 2026-11-09): Stress entsteht nur, wenn der SOFR-Abstand
+         STEIGT und das Volumen gleichzeitig FAELLT. Steigendes Volumen entlastet (0 Punkte).
+         anstieg = SOFR-Abstand (5-Tage-Schnitt, bp) minus dessen Schnitt der 20 Tage davor, nie unter 0.
+         faktor  = Volumen-Rueckgang (5-Tage-Schnitt gegen Schnitt der 20 Tage davor): 0 bei Anstieg/gleich,
+                   1 bei -5 %, gedeckelt bei 2 (-10 % und mehr).
+         Kennzahl = anstieg x faktor (in bp). */
+      var N = 20, VOL_SCHWELLE = 0.05;
+      var relV = ab5.map(function (_, i) {
+        if (i < N) { return 0; }
+        var ma = 0, mv = 0;
+        for (var j = i - N; j < i; j++) { ma += ab5[j] * 100; mv += vol5[j]; }
+        ma /= N; mv /= N;
+        var anstieg = Math.max(0, ab5[i] * 100 - ma);
+        var faktor = Math.min(2, Math.max(0, -(vol5[i] / mv - 1) / VOL_SCHWELLE));
+        return anstieg * faktor;
+      });
+      s.rel = { d: d, v: relV };
     }
     cache = s;
     return s;
@@ -153,11 +169,12 @@
       trend: { 20: [0.02, 0.06], 40: [0.03, 0.08], 60: [0.03, 0.09] } },
 
     { id: "rel", name: "SOFR-Volumen", gruppe: "funding", gewicht: 5, serie: "rel",
-      lang: "SOFR-Relation (Abstand je 1.000 Mrd. Volumen)", einheit: " bp", dez: 1, schnitt: true,
-      skala: 0.24,
-      wert: function (v, i, f) { return pt(v[i], 0, 10 * f); },
-      tempo: { 8: [1, 4], 14: [1, 4.5] },
-      trend: { 20: [1, 4.5], 40: [1.5, 5.5], 60: [1.5, 5.5] } },
+      lang: "SOFR-Anstieg bei fallendem Volumen", einheit: " bp", dez: 1, schnitt: true,
+      /* neue Schwellen 2026-11-09 (Felix: steigendes Volumen entlastet, Stress nur bei SOFR-Anstieg UND Volumen-Rueckgang) */
+      skala: 1,
+      wert: function (v, i, f) { return pt(v[i], 0.5, 10 * f); },
+      tempo: { 8: [0.5, 6], 14: [0.5, 7] },
+      trend: { 20: [0.5, 8], 40: [1, 10], 60: [1, 10] } },
 
     { id: "repo", name: "REPO", gruppe: "funding", gewicht: 16, serie: "repo",
       lang: "REPO (Fed-Repo-Nutzung)", einheit: " Mrd.", dez: 1, schnitt: true,
@@ -294,7 +311,13 @@
   /* neuestes Datum der taeglichen Reihe (VIX); Grundlage fuer "heute" */
   function stand() {
     var s = vorbereiten();
-    return s.vix ? s.vix.d[s.vix.d.length - 1] : null;
+    if (!s.vix) { return null; }
+    /* Stichtag des PDF-Reports: letzter VIX-Tag bis zu diesem Datum */
+    if (window.STICHTAG) {
+      var i = indexBis(s.vix.d, window.STICHTAG);
+      return i >= 0 ? s.vix.d[i] : null;
+    }
+    return s.vix.d[s.vix.d.length - 1];
   }
 
   function zeitpunkte() {

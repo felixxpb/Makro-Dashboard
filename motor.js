@@ -47,6 +47,14 @@
     if (!r || !r.punkte || !r.punkte.length) { return []; }
     var p = r.punkte.slice();
 
+    // Stichtag (nur PDF-Report): window.STICHTAG = "JJJJ-MM-TT" schneidet alle
+    // Reihen auf diesen Tag ab, Ableitungen (diff/qoq/yoy) rechnen danach.
+    // Ohne Stichtag (Normalfall) bleibt alles unveraendert.
+    if (window.STICHTAG) {
+      p = p.filter(function (pt) { return pt.d <= window.STICHTAG; });
+      if (!p.length) { return []; }
+    }
+
     if (k.ableitung === "diff") {
       var d = [];
       for (var i = 1; i < p.length; i++) {
